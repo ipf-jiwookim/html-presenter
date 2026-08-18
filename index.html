@@ -451,7 +451,26 @@ function fmtClock(totalSec){
   return h ? `${h}:${m}:${ss}` : `${m}:${ss}`;
 }
 
-const PURE = { fnv1a, normTokens, slideAnchors, anchorOverlap, migrateIndexed, sanitizeName, noteFileName, serializeNotes, parseNotes, fmtClock };
+// 현재 장 표시를 알아보는 규칙.
+// 하이픈·밑줄도 구분자로 보되(is-active, swiper-slide-active) 단어 안쪽은 보지 않는다 —
+// inactive 를 active 로 오인하면 "모든 장이 현재 장"이 되어 자동 정렬이 청중 화면을
+// 엉뚱한 곳으로 끌고 간다. 오판이 못 읽는 것보다 훨씬 나쁘다.
+const MARK_STRONG = new Set(['active', 'current', 'present']);
+const MARK_LOOSE  = new Set(['visible', 'shown', 'show', 'on', 'selected']);
+function markWords(cls){
+  return String(cls == null ? '' : cls).toLowerCase().split(/[\s_-]+/).filter(Boolean);
+}
+// tier: 'strong' | 'loose' — strong 에서는 명시적 속성 표기(data-active, aria-current)도 인정한다
+function isCurrentMark(tier, cls, dataActive, ariaCurrent){
+  if (tier === 'strong') {
+    if (dataActive != null && dataActive !== '' && dataActive !== 'false') return true;
+    if (ariaCurrent != null && ariaCurrent !== '' && ariaCurrent !== 'false') return true;
+  }
+  const set = tier === 'strong' ? MARK_STRONG : MARK_LOOSE;
+  return markWords(cls).some(w => set.has(w));
+}
+
+const PURE = { fnv1a, normTokens, slideAnchors, anchorOverlap, migrateIndexed, sanitizeName, noteFileName, serializeNotes, parseNotes, fmtClock, markWords, isCurrentMark };
 /* ==== PURE CORE END ==== */
 if (typeof window !== 'undefined') window.__pt = PURE;   // 브라우저 검증용 훅
 
@@ -579,17 +598,20 @@ function sendKey(win, dir){
 /* ---------- 덱이 실제로 움직였는지 판정 ----------
    구조를 아는 덱(현재 장에 active/visible 류 클래스)은 인덱스로,
    모르는 덱은 문서 지문 비교로 판정한다. 마지막·첫 장에서 단계가 헛도는 것을 막는다. */
-const ACT_STRONG = /(^|\s)(active|current)(\s|$)/;
-const ACT_LOOSE  = /(^|\s)(visible|shown|show|on|selected)(\s|$)/;
 function deckState(win){
   try {
     const d = win.document;
-    for (const sel of ['.slide', '.slides > *', '.step', '.page', 'section']) {
+    for (const sel of ['.slide', '.slides > *', '.swiper-slide', '.step', '.page', 'section']) {
       const els = [...d.querySelectorAll(sel)];
       if (els.length < 2) continue;
-      for (const re of [ACT_STRONG, ACT_LOOSE]) {
-        const i = els.findIndex(el => re.test(el.getAttribute('class') || ''));
-        if (i >= 0) return { i, n: els.length, els };
+      for (const tier of ['strong', 'loose']) {
+        const hits = [];
+        els.forEach((el, k) => {
+          if (isCurrentMark(tier, el.getAttribute('class'),
+                            el.getAttribute('data-active'), el.getAttribute('aria-current'))) hits.push(k);
+        });
+        // 후보가 2개 이상이면 어느 장이 현재인지 단정할 수 없다 — 틀리게 맞추느니 포기한다
+        if (hits.length === 1) return { i: hits[0], n: els.length, els };
       }
     }
   } catch (_) {}
