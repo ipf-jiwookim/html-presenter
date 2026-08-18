@@ -36,6 +36,10 @@ body{
   background:var(--void);color:var(--ink);
   font:15px/1.55 var(--ui);
   -webkit-tap-highlight-color:transparent;
+  /* 한국어는 기본 줄바꿈이 글자 단위여서 "메/모" 처럼 어절 중간이 끊긴다.
+     keep-all 로 어절을 통째로 유지하고, 한 낱말이 줄보다 길 때만 쪼갠다. */
+  word-break:keep-all;
+  overflow-wrap:break-word;
 }
 
 /* ── 라벨 타이포: 압축형 대문자 ── */
@@ -135,17 +139,22 @@ main{
 
 /* ── 큐 시트(메모) ── */
 .cue{display:flex;flex-direction:column;flex:1;min-height:0;border-top:1px solid var(--rule)}
-.cue-head{display:flex;align-items:center;gap:8px;padding:10px 14px 6px;flex-wrap:nowrap;white-space:nowrap}
+/* 제목줄과 조작줄을 분리한다 — 한 줄에 몰아넣었더니 노트 지도가 길어질 때
+   [노트 불러오기]·[노트 저장] 이 화면 밖으로 밀려나 잘렸다 */
+.cue-head{display:flex;align-items:baseline;gap:8px;padding:10px 14px 0;min-width:0}
+.cue-tools{display:flex;align-items:center;gap:6px;padding:8px 14px 6px;min-width:0}
+.cue-tools .spacer{flex:1}
+#noteMap{overflow:hidden;text-overflow:ellipsis;min-width:0}
 .cue-head h2{margin:0;font-family:var(--label);font-size:14px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--ink)}
 #noteFor{font-family:var(--data);font-size:12.5px;color:var(--next);font-variant-numeric:tabular-nums}
 #savedTag{margin-left:auto;font-size:12px;color:var(--ok);opacity:0;transition:opacity .25s ease}
 #savedTag.show{opacity:1}
 /* 조작부는 눌러도 되는 것처럼 보여야 한다 — 배경·테두리 없는 ghost 는 버튼으로 안 읽혔다 */
-.cue-head button{padding:5px 10px;font-size:12.5px;border-radius:6px}
+.cue-head button,.cue-tools button{padding:5px 10px;font-size:12.5px;border-radius:6px}
 /* "A− / A+" 로는 무슨 버튼인지 아무도 못 알아봤다 — 무엇을 조절하는지 말로 쓴다 */
 .fontgrp{display:flex;align-items:center;gap:4px;margin-left:auto;flex:none}
 .fontgrp button{min-width:38px;text-align:center}
-#savedTag{margin-left:0;flex:none}
+#savedTag{margin-left:auto;flex:none}
 .cue-head h2,.cue-head #noteFor{flex:none}
 #note{
   flex:1;min-height:110px;resize:none;margin:0 14px;padding:12px;
@@ -184,40 +193,135 @@ kbd{
 .trim .label{font-size:12px}
 #flash{font-size:13px;color:var(--next);min-height:1em}
 
-/* ── 시작 화면 ── */
-#dropzone{
-  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;
-  margin:22px;padding:40px;text-align:center;
-  border:1px dashed var(--rule);border-radius:14px;
-  background:radial-gradient(120% 90% at 50% 0%,#1a1f27 0%,var(--void) 70%);
-}
-#dropzone.over{border-color:var(--next);border-style:solid;background:radial-gradient(120% 90% at 50% 0%,#241f14 0%,var(--void) 70%)}
-#dropzone h1{
-  margin:0;font-family:var(--label);font-size:clamp(26px,4vw,42px);font-weight:600;
-  letter-spacing:.06em;text-transform:uppercase;text-wrap:balance;
-}
-#dropzone .kicker{font-family:var(--label);font-size:13px;letter-spacing:.3em;text-transform:uppercase;color:var(--live)}
-#dropzone p{margin:0;max-width:58ch;color:var(--ink-dim);text-wrap:pretty}
-#dropzone .fine{font-size:12.5px;color:#5d6572}
 input[type=file]{display:none}
-#resumeBtn{background:transparent;border-color:var(--rule);color:var(--next)}
 
 /* ── 단축키 도움말 ── */
-#help{position:fixed;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;background:rgba(14,16,19,.88)}
-.help-card{background:var(--console);border:1px solid var(--rule);border-radius:14px;padding:26px 30px;max-width:min(560px,90vw)}
-.help-card h2{margin:0 0 16px;font-family:var(--label);font-size:15px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--next)}
-.help-card dl{margin:0;display:grid;gap:9px}
+#help{position:fixed;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;
+  padding:24px;background:rgba(14,16,19,.88)}
+.help-card{background:var(--console);border:1px solid var(--rule);border-radius:14px;
+  padding:26px 30px;max-width:min(560px,100%);max-height:86vh;overflow:auto;
+  box-shadow:0 24px 60px rgba(0,0,0,.5)}
+.help-card h2{margin:0 0 16px;font-family:var(--label);font-size:15px;font-weight:600;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--next)}
+.help-card dl{margin:0;display:grid;gap:10px}
 .help-card dl > div{display:flex;align-items:baseline;gap:14px}
-.help-card dt{flex:0 0 12.5rem;font-family:var(--data);font-size:13px;color:var(--ink)}
-.help-card dd{margin:0;font-size:14px;color:var(--ink-dim)}
-.help-card dd em{font-style:normal;color:#6c7482}
+.help-card dt{flex:0 0 11rem;font-family:var(--data);font-size:12.5px;color:var(--ink)}
+.help-card dd{margin:0;font-size:13.5px;color:var(--ink-dim)}
+.help-card dd em{font-style:normal;color:#5a6270}
 .help-foot{margin:18px 0 0;font-size:12.5px;line-height:1.7;color:var(--ink-dim)}
 .help-card > button{margin-top:18px}
+
+/* ── 장 번호 점프 ── */
 #posChip{cursor:pointer}
 #posChip:hover{border-color:var(--live)}
-#jumpInput{width:4.5ch;font:700 16px var(--data);background:#0f1216;color:var(--ink);
-  border:1px solid var(--live);border-radius:5px;padding:4px 6px;text-align:center}
-#noteMap{font-family:var(--label);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:#6c7482;white-space:nowrap}
+#jumpInput{width:5ch;font:700 16px var(--data);background:#0f1216;color:var(--ink);
+  border:1px solid var(--live);border-radius:6px;padding:5px 8px;text-align:center;flex:none}
+
+
+/* ── 시작 화면: 방송 들어가기 전 "입력 패치 패널" ──
+   콘솔 본체와 같은 세계관을 쓴다. ON AIR 표시등은 자료를 넣기 전엔 꺼져 있고,
+   준비되면 켜진다 — 이 화면에서 기억에 남아야 하는 단 하나의 순간이다. */
+#dropzone{
+  position:relative;flex:1;display:flex;align-items:center;justify-content:center;padding:28px;
+  background:var(--void);overflow:hidden;
+}
+/* 1px 스캔라인은 미세하게 떨려 눈이 아팠다 — 아주 느리게 움직이는 넓은 광원으로 바꾼다 */
+#dropzone::before,#dropzone::after{
+  content:'';position:absolute;border-radius:50%;pointer-events:none;filter:blur(80px);
+}
+#dropzone::before{
+  width:70vmax;height:70vmax;left:-16vmax;top:-26vmax;
+  background:radial-gradient(circle, rgba(255,66,48,.10), transparent 62%);
+}
+#dropzone::after{
+  width:56vmax;height:56vmax;right:-14vmax;bottom:-22vmax;
+  background:radial-gradient(circle, rgba(255,176,46,.07), transparent 62%);
+}
+@media (prefers-reduced-motion: no-preference){
+  #dropzone::before{animation:drift1 26s ease-in-out infinite alternate}
+  #dropzone::after{animation:drift2 34s ease-in-out infinite alternate}
+  @keyframes drift1{to{transform:translate3d(5vmax,4vmax,0) scale(1.1)}}
+  @keyframes drift2{to{transform:translate3d(-4vmax,-5vmax,0) scale(1.12)}}
+}
+.patch{position:relative}
+#dropzone.over .patch{border-color:var(--next);box-shadow:0 0 0 1px var(--next), 0 24px 60px rgba(0,0,0,.5)}
+.patch{
+  width:min(920px,100%);border:1px solid var(--rule);border-radius:14px;overflow:hidden;
+  background:linear-gradient(180deg,#171a20,#131519);box-shadow:0 24px 60px rgba(0,0,0,.45);
+  transition:border-color .18s ease, box-shadow .18s ease;
+}
+.patch-rail{
+  display:flex;align-items:center;gap:10px;padding:9px 16px;
+  border-bottom:1px solid var(--rule);background:#0f1216;
+  font-family:var(--label);font-size:11.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-dim);
+}
+.rail-dot{width:8px;height:8px;border-radius:50%;background:#3a4250;flex:none}
+.patch.armed .rail-dot{background:var(--ok);box-shadow:0 0 9px var(--ok)}
+.rail-fill{flex:1;height:1px;background:repeating-linear-gradient(90deg,var(--rule) 0 4px,transparent 4px 8px)}
+.rail-meta{color:#5a6270;letter-spacing:.26em}
+
+.patch-body{display:grid;grid-template-columns:minmax(0,1fr) 190px;gap:30px;padding:26px 26px 22px}
+.patch-left{min-width:0}
+.patch-left h1{
+  margin:0 0 10px;font-family:var(--ui);font-size:clamp(26px,3.4vw,36px);font-weight:800;
+  letter-spacing:-.02em;color:var(--ink);text-wrap:balance;
+}
+.patch-left p{margin:0 0 20px;max-width:46ch;font-size:14px;line-height:1.75;color:var(--ink-dim);text-wrap:pretty}
+
+.setup{display:flex;flex-direction:column;gap:9px}
+.slot{
+  display:flex;align-items:center;gap:14px;padding:13px 15px;
+  border:1px solid var(--rule);border-radius:10px;background:#12151a;min-width:0;
+  transition:border-color .18s ease, background .18s ease;
+}
+.slot-no{font-family:var(--data);font-size:12px;color:#4d5563;flex:none}
+.slot.filled{border-color:rgba(53,201,138,.55);background:#111a16}
+.slot.filled .slot-no{color:var(--ok)}
+.slot-main{flex:1;min-width:0}
+.slot-k{font-family:var(--label);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-dim)}
+.slot-k b{color:var(--live);font-weight:600}
+.slot-k .opt{color:#5a6270}
+.slot-v{margin-top:3px;font-family:var(--data);font-size:12.5px;color:#5a6270;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.slot.filled .slot-v{color:var(--ink)}
+.slot button{flex:none}
+
+.patch-go{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:20px}
+#startBtn{padding:13px 26px;font-size:15px;letter-spacing:.01em}
+#startBtn:disabled{background:var(--raised);border-color:var(--rule);color:#5a6270;box-shadow:none}
+.patch.armed #startBtn{box-shadow:0 0 0 1px rgba(255,66,48,.5), 0 8px 26px rgba(255,66,48,.28)}
+#resumeBtn{background:transparent;border-color:var(--rule);color:var(--next);padding:9px 14px;font-size:12.5px;
+  max-width:34ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.patch-right{display:flex;flex-direction:column;align-items:center;gap:12px;justify-content:center}
+.onair{
+  width:100%;aspect-ratio:1/.62;border-radius:10px;display:flex;align-items:center;justify-content:center;
+  border:1px solid #2a1a18;background:#140f10;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.03);
+  transition:background .3s ease, border-color .3s ease, box-shadow .3s ease;
+}
+.onair-t{font-family:var(--label);font-size:clamp(22px,2.4vw,30px);font-weight:600;line-height:.95;
+  letter-spacing:.16em;text-align:center;color:#3a2020;transition:color .3s ease, text-shadow .3s ease}
+.patch.armed .onair{background:#1d1113;border-color:rgba(255,66,48,.6);box-shadow:inset 0 0 30px rgba(255,66,48,.16)}
+.patch.armed .onair-t{color:var(--live);text-shadow:0 0 18px rgba(255,66,48,.6)}
+.onair-cap{font-size:11.5px;line-height:1.6;color:#5a6270;text-align:center;max-width:20ch}
+.patch.armed .onair-cap{color:var(--ok)}
+
+
+@media (max-width:760px){
+  .patch-body{grid-template-columns:minmax(0,1fr);gap:20px}
+  .patch-right{flex-direction:row;align-items:center;gap:14px}
+  .onair{width:118px;flex:none}
+  .onair-cap{text-align:left;max-width:none}
+}
+@media (prefers-reduced-motion: no-preference){
+  .patch-rail,.patch-left h1,.patch-left p,.setup,.patch-go,.patch-right,  .patch-left h1{animation-delay:.05s}
+  .patch-left p{animation-delay:.1s}
+  .setup{animation-delay:.16s}
+  .patch-go{animation-delay:.24s}
+  .patch-right{animation-delay:.2s}
+    @keyframes patchIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
+}
 
 /* ── 드래그 안내 ── */
 #dropHint{
@@ -284,15 +388,56 @@ input[type=file]{display:none}
 </div>
 
 <div id="dropzone">
-  <span class="kicker">Presenter Console</span>
-  <h1>HTML 발표 자료를 여기에 놓으세요</h1>
-  <p>완성된 슬라이드 HTML 파일 하나를 끌어다 놓으면, 청중 화면과 분리된 발표자 콘솔이
-     열립니다. 현재·다음 화면, 페이지별 메모, 경과 타이머가 함께 붙습니다.
-     내보낸 노트(.md)를 놓으면 메모를 다시 불러옵니다.</p>
-  <button id="pickBtn" class="primary">파일 선택</button>
-  <input type="file" id="fileInput" accept=".html,.htm,.md,text/html,text/markdown">
-  <button id="resumeBtn" hidden></button>
-  <p class="fine">파일은 이 브라우저 안에서만 열립니다. 서버로 올라가지 않고, 인터넷 없이도 동작합니다.</p>
+  <div class="patch">
+    <div class="patch-rail">
+      <span class="rail-dot" aria-hidden="true"></span>
+      <span id="railState">STANDBY</span>
+      <span class="rail-fill" aria-hidden="true"></span>
+      <span class="rail-meta">PRESENTER CONSOLE</span>
+    </div>
+
+    <div class="patch-body">
+      <div class="patch-left">
+        <h1>발표 준비</h1>
+        <p>발표 자료를 넣으면 청중 화면과 분리된 콘솔이 열립니다.
+           현재·다음 화면, 페이지별 메모, 경과 타이머가 함께 붙습니다.</p>
+
+        <div class="setup">
+          <div class="slot" id="slotDeck">
+            <span class="slot-no" aria-hidden="true">01</span>
+            <div class="slot-main">
+              <div class="slot-k">발표 자료 <b>필수</b></div>
+              <div class="slot-v" id="deckPicked">대기 중 · HTML 파일</div>
+            </div>
+            <button id="pickBtn">고르기</button>
+          </div>
+          <div class="slot" id="slotNotes">
+            <span class="slot-no" aria-hidden="true">02</span>
+            <div class="slot-main">
+              <div class="slot-k">발표 대본 <span class="opt">선택</span></div>
+              <div class="slot-v" id="notesPicked">대기 중 · 내보낸 노트(.md)</div>
+            </div>
+            <button id="pickNotesBtn">고르기</button>
+          </div>
+        </div>
+
+        <div class="patch-go">
+          <button id="startBtn" class="primary" disabled>발표 시작</button>
+          <button id="resumeBtn" hidden></button>
+        </div>
+      </div>
+
+      <div class="patch-right" aria-hidden="true">
+        <div class="onair" id="onairPlate">
+          <span class="onair-t">ON<br>AIR</span>
+        </div>
+        <div class="onair-cap" id="onairCap">자료를 넣으면 준비됩니다</div>
+      </div>
+    </div>
+
+  </div>
+  <input type="file" id="fileInput" accept=".html,.htm,text/html">
+  <input type="file" id="notesInput" accept=".md,text/markdown">
 </div>
 
 <main id="app" hidden>
@@ -320,12 +465,15 @@ input[type=file]{display:none}
         <span id="noteFor"></span>
         <span id="noteMap"></span>
         <span id="savedTag" aria-live="polite">저장됨</span>
+      </div>
+      <div class="cue-tools">
         <span class="fontgrp">
           <button id="fontDown" title="메모 글씨 작게" aria-label="메모 글씨 작게">가−</button>
           <button id="fontUp" title="메모 글씨 크게" aria-label="메모 글씨 크게">가＋</button>
         </span>
-        <button id="importBtn" title="내보낸 노트 파일(.md)을 불러옵니다">불러오기</button>
-        <button id="exportBtn" title="이 자료의 메모를 .md 파일로 저장합니다">저장</button>
+        <div class="spacer"></div>
+        <button id="importBtn" title="내보낸 노트 파일(.md)을 불러옵니다">노트 불러오기</button>
+        <button id="exportBtn" title="이 자료의 메모를 .md 파일로 저장합니다">노트 저장</button>
         <input type="file" id="mdInput" accept=".md,text/markdown">
       </div>
       <textarea id="note" aria-label="이 페이지 메모" spellcheck="false"
@@ -549,15 +697,54 @@ function loadDeck(text, name){
 }
 window.__ptLoad = loadDeck; // 프로그래매틱 로드용(테스트/확장)
 
+// 발표 전에는 파일을 "고르기"만 하고, [발표 시작] 을 눌렀을 때 실제로 연다 —
+// 자료와 대본을 함께 준비한 뒤 한 번에 시작할 수 있어야 한다.
+let staged = { deck: null, notes: null };
+function renderSetup(){
+  const ready = !!staged.deck;                            // 자료 없이는 시작할 수 없다
+  $('#deckPicked').textContent = staged.deck ? staged.deck.name : '대기 중 · HTML 파일';
+  $('#notesPicked').textContent = staged.notes ? staged.notes.name : '대기 중 · 내보낸 노트(.md)';
+  $('#slotDeck').classList.toggle('filled', ready);
+  $('#slotNotes').classList.toggle('filled', !!staged.notes);
+  $('#startBtn').disabled = !ready;
+  $('#startBtn').title = ready ? '' : '발표 자료를 먼저 불러와 주세요';
+  // ON AIR 표시등 — 준비되면 켜진다
+  $('.patch').classList.toggle('armed', ready);
+  $('#railState').textContent = ready ? 'READY' : 'STANDBY';
+  $('#onairCap').textContent = ready
+    ? (staged.notes ? '자료·대본 준비됨' : '자료 준비됨 · 대본은 선택입니다')
+    : '자료를 넣으면 준비됩니다';
+}
+function stageFile(file, done){
+  const r = new FileReader();
+  r.onload = () => done(r.result);
+  r.readAsText(file);
+}
+function startPresenting(){
+  if (!staged.deck) return;
+  loadDeck(staged.deck.text, staged.deck.name);
+  if (staged.notes) setTimeout(() => importNotes(staged.notes.text), 300);   // 앵커가 준비된 뒤 붙인다
+}
+
 function handleFile(file){
   if (!file) return;
   const isMd = /\.md$/i.test(file.name);
-  if (isMd && !deckHTML) { flash('발표 자료를 먼저 열어주세요.'); return; }
-  const r = new FileReader();
-  r.onload = () => isMd ? importNotes(r.result) : loadDeck(r.result, file.name);
-  r.readAsText(file);
+  // 발표 중이면 즉시 반영, 시작 전이면 골라 두기만 한다
+  if (deckHTML) {
+    if (isMd && !deckHTML) { flash('발표 자료를 먼저 열어주세요.'); return; }
+    stageFile(file, text => isMd ? importNotes(text) : loadDeck(text, file.name));
+    return;
+  }
+  stageFile(file, text => {
+    if (isMd) staged.notes = { text, name: file.name };
+    else staged.deck = { text, name: file.name };
+    renderSetup();
+  });
 }
-$('#pickBtn').onclick = () => $('#fileInput').click();
+$('#pickBtn').onclick = function(){ this.blur(); $('#fileInput').click(); };
+$('#pickNotesBtn').onclick = function(){ this.blur(); $('#notesInput').click(); };
+$('#notesInput').onchange = e => { const f = e.target.files[0]; e.target.value = ''; handleFile(f); };
+$('#startBtn').onclick = function(){ this.blur(); startPresenting(); };
 $('#importBtn').onclick = function(){ this.blur(); $('#mdInput').click(); };
 $('#mdInput').onchange = e => { const f = e.target.files[0]; e.target.value = ''; handleFile(f); };
 $('#reloadBtn').onclick = function(){ this.blur(); $('#fileInput').click(); };
@@ -917,17 +1104,20 @@ function injectAudienceUX(){
     d.addEventListener('fullscreenchange', () => btn.classList.toggle('pt-fade', !!d.fullscreenElement));
     // 4초 동안 마우스가 안 움직이면 커서·버튼 숨김
     let idleT = null;
+    // 처음 5초만 보여주고(발견용), 그 뒤에는 4초 무입력마다 숨긴다.
+    // 계속 띄워두면 청중 화면에 버튼이 박혀 있어 거슬리고, 바로 숨기면
+    // 그런 버튼이 있다는 걸 아무도 모른다(예전엔 4초 뒤 opacity:0 이라 못 찾았다).
+    // 마우스를 움직이면 언제든 다시 나타난다.
+    let firstReveal = true;
     const poke = () => {
       d.documentElement.classList.remove('pt-hidecursor');
       if (!d.fullscreenElement) btn.classList.remove('pt-fade');
       clearTimeout(idleT);
       idleT = win.setTimeout(() => {
         d.documentElement.classList.add('pt-hidecursor');
-        // 전체화면에 들어가기 전에는 버튼을 숨기지 않는다 — 숨기면 그런 버튼이
-        // 있다는 걸 아무도 모른다(실제로 opacity:0 상태라 못 찾았다).
-        // 전체화면에 들어간 뒤에는 할 일이 없으므로 그때부터 숨긴다.
-        if (d.fullscreenElement) btn.classList.add('pt-fade');
-      }, 4000);
+        btn.classList.add('pt-fade');
+        firstReveal = false;
+      }, firstReveal ? 5000 : 4000);
     };
     d.addEventListener('mousemove', poke);
     poke();
@@ -1387,7 +1577,7 @@ try {
     const b = $('#resumeBtn');
     b.hidden = false;
     b.textContent = '지난 발표 이어서 열기 — ' + last.name;
-    b.onclick = () => loadDeck(last.html, last.name);
+    b.onclick = () => { staged.deck = { text: last.html, name: last.name }; renderSetup(); };
   }
 } catch (_) {}
 
