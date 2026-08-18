@@ -24,7 +24,6 @@
   --live:#ff4230;        /* 탤리 레드 — 송출 중 */
   --next:#ffb02e;        /* 탤리 앰버 — 다음 */
   --ok:#35c98a;          /* 연결됨(의미색) */
-  --label:'Avenir Next Condensed','Bahnschrift SemiLight','Arial Narrow',sans-serif;
   --ui:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;
   --data:'SF Mono',Menlo,'Cascadia Mono',ui-monospace,monospace;
 }
@@ -43,10 +42,7 @@ body{
 }
 
 /* ── 라벨 타이포: 압축형 대문자 ── */
-.label{
-  font-family:var(--label);font-size:13px;font-weight:600;
-  letter-spacing:.14em;text-transform:uppercase;color:var(--ink-dim);
-}
+.label{font-size:12.5px;font-weight:600;color:var(--ink-dim)}
 
 /* ── 상단 랙 ── */
 .rack{
@@ -55,7 +51,7 @@ body{
   border-bottom:1px solid var(--rule);
 }
 .deck-id{
-  font-family:var(--label);font-size:17px;font-weight:600;letter-spacing:.04em;
+  font-size:16px;font-weight:700;letter-spacing:-.01em;
   max-width:34ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
 .spacer{flex:1}
@@ -66,11 +62,11 @@ body{
   white-space:nowrap;flex:none;
 }
 #posChip.at-end{color:var(--next);border-color:#3d3016}
-#audStatus{font-family:var(--label);font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-dim);white-space:nowrap;flex:none}
+#audStatus{font-size:13px;color:var(--ink-dim);white-space:nowrap;flex:none}
 #audStatus.on{color:var(--ok)}
 /* 계측부: 무엇을 세는 숫자인지 라벨로 못박는다 */
 .meter{display:flex;align-items:baseline;gap:7px;flex:none}
-.meter-k{font-family:var(--label);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6c7482}
+.meter-k{font-size:12px;color:#6c7482}
 #timer{
   font-family:var(--data);font-size:30px;font-weight:700;line-height:1;
   font-variant-numeric:tabular-nums;min-width:5.2ch;text-align:right;
@@ -101,7 +97,7 @@ button:focus-visible{outline:2px solid var(--next);outline-offset:2px}
 .tbtn.live{border-color:#7c2c23;box-shadow:inset 0 0 0 1px rgba(255,66,48,.22)}
 .tbtn.live::before{
   content:'';width:9px;height:9px;border-radius:50%;flex:none;
-  background:var(--live);box-shadow:0 0 9px var(--live);
+  background:var(--live);
 }
 .primary{background:var(--live);border-color:#ff6a5c;color:#fff;font-weight:700}
 .primary:hover:not(:disabled){background:#ff5745;border-color:#ff8578}
@@ -120,15 +116,9 @@ main{
   border-top:3px solid var(--live);background:#1b1216;
 }
 .tally.next{border-top-color:var(--next);background:#1a1611}
-.tally .dot{width:9px;height:9px;border-radius:50%;background:var(--live);box-shadow:0 0 10px var(--live)}
-.tally.next .dot{background:var(--next);box-shadow:0 0 10px var(--next)}
-.tally .name{font-family:var(--label);font-size:14px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--live)}
+.tally .name{font-size:14px;font-weight:700;color:var(--live)}
 .tally.next .name{color:var(--next)}
 .tally .note{font-size:12.5px;color:var(--ink-dim)}
-@media (prefers-reduced-motion: no-preference){
-  .tally .dot{animation:pulse 2.4s ease-in-out infinite}
-  @keyframes pulse{50%{opacity:.35}}
-}
 .stage{
   position:relative;flex:1;min-height:0;overflow:hidden;
   background:#000;box-shadow:inset 0 0 0 1px #000, inset 0 0 60px rgba(0,0,0,.9);
@@ -145,7 +135,7 @@ main{
 .cue-tools{display:flex;align-items:center;gap:6px;padding:8px 14px 6px;min-width:0}
 .cue-tools .spacer{flex:1}
 #noteMap{overflow:hidden;text-overflow:ellipsis;min-width:0}
-.cue-head h2{margin:0;font-family:var(--label);font-size:14px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--ink)}
+.cue-head h2{margin:0;font-size:15px;font-weight:700;color:var(--ink)}
 #noteFor{font-family:var(--data);font-size:12.5px;color:var(--next);font-variant-numeric:tabular-nums}
 #savedTag{margin-left:auto;font-size:12px;color:var(--ok);opacity:0;transition:opacity .25s ease}
 #savedTag.show{opacity:1}
@@ -165,11 +155,11 @@ main{
 #note:focus-visible{outline:2px solid var(--next);outline-offset:1px;border-color:transparent}
 #nextnote{margin:8px 14px 14px;font-size:13px;line-height:1.6;color:var(--ink-dim);max-height:5.5em;overflow:auto;white-space:pre-wrap}
 #nextnote:not(:empty)::before{
-  content:'다음 페이지 메모';display:block;
-  font-family:var(--label);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--next);margin-bottom:3px;
+  content:'다음 장 대본';display:block;
+  font-size:12px;font-weight:600;color:var(--next);margin-bottom:4px;
 }
 #orphanBox{margin:0 14px 14px;border:1px solid var(--rule);border-radius:8px;background:#12151a}
-#orphanSum{padding:9px 12px;cursor:pointer;font-family:var(--label);font-size:12.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--next)}
+#orphanSum{padding:9px 12px;cursor:pointer;font-size:13px;font-weight:600;color:var(--next)}
 .orphan{padding:10px 12px;border-top:1px solid var(--rule);display:flex;flex-direction:column;gap:7px}
 .orphan .hint{font-size:11.5px;color:#6c7482}
 .orphan .body{font-size:13px;line-height:1.6;white-space:pre-wrap;max-height:4.5em;overflow:auto}
@@ -185,6 +175,15 @@ main{
 /* 좁은 화면에서는 단축키 안내를 접어 조작부를 우선한다 */
 @media (max-width:1100px){ .transport .hint{display:none} }
 @media (max-width:900px){ .trim .label{display:none} }
+/* 좁은 화면: 두 모니터를 위아래로 쌓는다. 340px 사이드 칼럼이 본 화면을 89px 로 눌렀다 */
+@media (max-width:820px){
+  main{grid-template-columns:minmax(0,1fr);overflow:auto}
+  .bay{min-height:auto}
+  .bay:not(.side) .stage{flex:0 0 auto;aspect-ratio:16/9}
+  .rack,.transport{flex-wrap:wrap;row-gap:8px}   /* 안 접으면 [청중 화면 열기]·[청중 보정] 이 잘려 나갔다 */
+  #timer{font-size:24px}
+  .tally .note{display:none}
+}
 kbd{
   font-family:var(--data);font-size:11.5px;padding:2px 6px;margin:0 1px;
   background:#0f1216;border:1px solid var(--rule);border-radius:4px;color:var(--ink-dim);
@@ -201,8 +200,7 @@ input[type=file]{display:none}
 .help-card{background:var(--console);border:1px solid var(--rule);border-radius:14px;
   padding:26px 30px;max-width:min(560px,100%);max-height:86vh;overflow:auto;
   box-shadow:0 24px 60px rgba(0,0,0,.5)}
-.help-card h2{margin:0 0 16px;font-family:var(--label);font-size:15px;font-weight:600;
-  letter-spacing:.16em;text-transform:uppercase;color:var(--next)}
+.help-card h2{margin:0 0 16px;font-size:16px;font-weight:700;color:var(--next)}
 .help-card dl{margin:0;display:grid;gap:10px}
 .help-card dl > div{display:flex;align-items:baseline;gap:14px}
 .help-card dt{flex:0 0 11rem;font-family:var(--data);font-size:12.5px;color:var(--ink)}
@@ -218,9 +216,8 @@ input[type=file]{display:none}
   border:1px solid var(--live);border-radius:6px;padding:5px 8px;text-align:center;flex:none}
 
 
-/* ── 시작 화면: 방송 들어가기 전 "입력 패치 패널" ──
-   콘솔 본체와 같은 세계관을 쓴다. ON AIR 표시등은 자료를 넣기 전엔 꺼져 있고,
-   준비되면 켜진다 — 이 화면에서 기억에 남아야 하는 단 하나의 순간이다. */
+/* ── 시작 화면 ──
+   여기서 사용자가 할 일은 파일을 넣는 것 하나뿐이다. 그 하나만 남긴다. */
 #dropzone{
   position:relative;flex:1;display:flex;align-items:center;justify-content:center;padding:28px;
   background:var(--void);overflow:hidden;
@@ -246,21 +243,11 @@ input[type=file]{display:none}
 .patch{position:relative}
 #dropzone.over .patch{border-color:var(--next);box-shadow:0 0 0 1px var(--next), 0 24px 60px rgba(0,0,0,.5)}
 .patch{
-  width:min(920px,100%);border:1px solid var(--rule);border-radius:14px;overflow:hidden;
+  width:min(620px,100%);border:1px solid var(--rule);border-radius:14px;overflow:hidden;
   background:linear-gradient(180deg,#171a20,#131519);box-shadow:0 24px 60px rgba(0,0,0,.45);
   transition:border-color .18s ease, box-shadow .18s ease;
 }
-.patch-rail{
-  display:flex;align-items:center;gap:10px;padding:9px 16px;
-  border-bottom:1px solid var(--rule);background:#0f1216;
-  font-family:var(--label);font-size:11.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-dim);
-}
-.rail-dot{width:8px;height:8px;border-radius:50%;background:#3a4250;flex:none}
-.patch.armed .rail-dot{background:var(--ok);box-shadow:0 0 9px var(--ok)}
-.rail-fill{flex:1;height:1px;background:repeating-linear-gradient(90deg,var(--rule) 0 4px,transparent 4px 8px)}
-.rail-meta{color:#5a6270;letter-spacing:.26em}
-
-.patch-body{display:grid;grid-template-columns:minmax(0,1fr) 190px;gap:30px;padding:26px 26px 22px}
+.patch-body{padding:30px 30px 26px}
 .patch-left{min-width:0}
 .patch-left h1{
   margin:0 0 10px;font-family:var(--ui);font-size:clamp(26px,3.4vw,36px);font-weight:800;
@@ -274,11 +261,9 @@ input[type=file]{display:none}
   border:1px solid var(--rule);border-radius:10px;background:#12151a;min-width:0;
   transition:border-color .18s ease, background .18s ease;
 }
-.slot-no{font-family:var(--data);font-size:12px;color:#4d5563;flex:none}
 .slot.filled{border-color:rgba(53,201,138,.55);background:#111a16}
-.slot.filled .slot-no{color:var(--ok)}
 .slot-main{flex:1;min-width:0}
-.slot-k{font-family:var(--label);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-dim)}
+.slot-k{font-size:14px;font-weight:600;color:var(--ink)}
 .slot-k b{color:var(--live);font-weight:600}
 .slot-k .opt{color:#5a6270}
 .slot-v{margin-top:3px;font-family:var(--data);font-size:12.5px;color:#5a6270;
@@ -289,38 +274,21 @@ input[type=file]{display:none}
 .patch-go{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:20px}
 #startBtn{padding:13px 26px;font-size:15px;letter-spacing:.01em}
 #startBtn:disabled{background:var(--raised);border-color:var(--rule);color:#5a6270;box-shadow:none}
-.patch.armed #startBtn{box-shadow:0 0 0 1px rgba(255,66,48,.5), 0 8px 26px rgba(255,66,48,.28)}
+.patch.armed #startBtn{box-shadow:0 6px 18px rgba(0,0,0,.4)}
 #resumeBtn{background:transparent;border-color:var(--rule);color:var(--next);padding:9px 14px;font-size:12.5px;
   max-width:34ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
-.patch-right{display:flex;flex-direction:column;align-items:center;gap:12px;justify-content:center}
-.onair{
-  width:100%;aspect-ratio:1/.62;border-radius:10px;display:flex;align-items:center;justify-content:center;
-  border:1px solid #2a1a18;background:#140f10;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.03);
-  transition:background .3s ease, border-color .3s ease, box-shadow .3s ease;
-}
-.onair-t{font-family:var(--label);font-size:clamp(22px,2.4vw,30px);font-weight:600;line-height:.95;
-  letter-spacing:.16em;text-align:center;color:#3a2020;transition:color .3s ease, text-shadow .3s ease}
-.patch.armed .onair{background:#1d1113;border-color:rgba(255,66,48,.6);box-shadow:inset 0 0 30px rgba(255,66,48,.16)}
-.patch.armed .onair-t{color:var(--live);text-shadow:0 0 18px rgba(255,66,48,.6)}
-.onair-cap{font-size:11.5px;line-height:1.6;color:#5a6270;text-align:center;max-width:20ch}
-.patch.armed .onair-cap{color:var(--ok)}
-
-
 @media (max-width:760px){
-  .patch-body{grid-template-columns:minmax(0,1fr);gap:20px}
-  .patch-right{flex-direction:row;align-items:center;gap:14px}
-  .onair{width:118px;flex:none}
-  .onair-cap{text-align:left;max-width:none}
+  .patch-body{padding:22px 20px 20px}
+  .slot{flex-wrap:wrap}
 }
+/* 한 번만 순서대로 등장한다. 발표가 시작되면 이 화면은 사라지므로 여기서만 허용한다 */
 @media (prefers-reduced-motion: no-preference){
-  .patch-rail,.patch-left h1,.patch-left p,.setup,.patch-go,.patch-right,  .patch-left h1{animation-delay:.05s}
-  .patch-left p{animation-delay:.1s}
-  .setup{animation-delay:.16s}
-  .patch-go{animation-delay:.24s}
-  .patch-right{animation-delay:.2s}
-    @keyframes patchIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
+  .patch-left h1,.patch-left p,.setup,.patch-go{animation:patchIn .5s cubic-bezier(.16,1,.3,1) both}
+  .patch-left p{animation-delay:.06s}
+  .setup{animation-delay:.12s}
+  .patch-go{animation-delay:.2s}
+  @keyframes patchIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
 }
 
 /* ── 드래그 안내 ── */
@@ -329,12 +297,11 @@ input[type=file]{display:none}
   background:rgba(14,16,19,.82);pointer-events:none;
 }
 #dropHint > div{
-  font-family:var(--label);font-size:clamp(22px,3vw,34px);font-weight:600;letter-spacing:.06em;
-  text-transform:uppercase;color:var(--ink);text-align:center;
+  font-size:clamp(21px,2.6vw,30px);font-weight:700;letter-spacing:-.01em;
+  color:var(--ink);text-align:center;
   padding:34px 48px;border:2px dashed var(--next);border-radius:16px;
 }
-#dropHint small{display:block;margin-top:12px;font-family:var(--ui);font-size:14px;
-  font-weight:400;letter-spacing:0;text-transform:none;color:var(--ink-dim)}
+#dropHint small{display:block;margin-top:12px;font-size:14px;font-weight:400;color:var(--ink-dim)}
 
 /* ── 알림 바 ── */
 #notice{
@@ -347,7 +314,7 @@ input[type=file]{display:none}
 
 <header class="rack" id="rack" hidden>
   <span class="deck-id" id="deckname" translate="no"></span>
-  <span id="posChip" aria-live="polite">— / —</span>
+  <span id="posChip" aria-live="polite"></span>
   <span id="audStatus" aria-live="polite">청중 화면 없음</span>
   <div class="spacer"></div>
   <span class="meter" title="발표를 시작한 뒤 흐른 시간">
@@ -365,21 +332,21 @@ input[type=file]{display:none}
   <div class="help-card">
     <h2>단축키</h2>
     <dl>
-      <div><dt>→ · Space · PageDown</dt><dd>다음 장</dd></div>
-      <div><dt>← · PageUp</dt><dd>이전 장</dd></div>
+      <div><dt>→ / Space / PageDown</dt><dd>다음 장</dd></div>
+      <div><dt>← / PageUp</dt><dd>이전 장</dd></div>
       <div><dt>숫자 + Enter</dt><dd>그 번호 장으로 바로 가기</dd></div>
       <div><dt>F</dt><dd>전체화면 <em>(청중 창에서)</em></dd></div>
       <div><dt>?</dt><dd>이 도움말 열고 닫기</dd></div>
       <div><dt>Esc</dt><dd>닫기</dd></div>
     </dl>
     <p class="help-foot">위치 숫자(<b>1 / 5</b>)를 클릭해도 장 번호를 입력할 수 있습니다.
-       메모를 쓰는 중에는 단축키가 동작하지 않습니다 — 글자가 그대로 입력됩니다.</p>
+       대본을 쓰는 중에는 단축키가 동작하지 않습니다. 글자가 그대로 입력됩니다.</p>
     <button id="helpClose" class="primary">닫기</button>
   </div>
 </div>
 
 <div id="dropHint" hidden>
-  <div>여기에 놓으세요<small>발표 자료(.html) — 자료 교체 · 노트 파일(.md) — 메모 불러오기</small></div>
+  <div>여기에 놓으세요<small>HTML 파일은 발표 자료로, MD 파일은 대본으로 들어갑니다</small></div>
 </div>
 
 <div id="notice" role="status" hidden>
@@ -389,33 +356,23 @@ input[type=file]{display:none}
 
 <div id="dropzone">
   <div class="patch">
-    <div class="patch-rail">
-      <span class="rail-dot" aria-hidden="true"></span>
-      <span id="railState">STANDBY</span>
-      <span class="rail-fill" aria-hidden="true"></span>
-      <span class="rail-meta">PRESENTER CONSOLE</span>
-    </div>
-
     <div class="patch-body">
       <div class="patch-left">
         <h1>발표 준비</h1>
-        <p>발표 자료를 넣으면 청중 화면과 분리된 콘솔이 열립니다.
-           현재·다음 화면, 페이지별 메모, 경과 타이머가 함께 붙습니다.</p>
+        <p>발표 자료를 넣으면 청중 화면과 발표자 화면이 따로 열립니다.</p>
 
         <div class="setup">
           <div class="slot" id="slotDeck">
-            <span class="slot-no" aria-hidden="true">01</span>
             <div class="slot-main">
               <div class="slot-k">발표 자료 <b>필수</b></div>
-              <div class="slot-v" id="deckPicked">대기 중 · HTML 파일</div>
+              <div class="slot-v" id="deckPicked">HTML 파일</div>
             </div>
             <button id="pickBtn">고르기</button>
           </div>
           <div class="slot" id="slotNotes">
-            <span class="slot-no" aria-hidden="true">02</span>
             <div class="slot-main">
               <div class="slot-k">발표 대본 <span class="opt">선택</span></div>
-              <div class="slot-v" id="notesPicked">대기 중 · 내보낸 노트(.md)</div>
+              <div class="slot-v" id="notesPicked">내보낸 대본 파일 (.md)</div>
             </div>
             <button id="pickNotesBtn">고르기</button>
           </div>
@@ -425,13 +382,6 @@ input[type=file]{display:none}
           <button id="startBtn" class="primary" disabled>발표 시작</button>
           <button id="resumeBtn" hidden></button>
         </div>
-      </div>
-
-      <div class="patch-right" aria-hidden="true">
-        <div class="onair" id="onairPlate">
-          <span class="onair-t">ON<br>AIR</span>
-        </div>
-        <div class="onair-cap" id="onairCap">자료를 넣으면 준비됩니다</div>
       </div>
     </div>
 
@@ -443,41 +393,39 @@ input[type=file]{display:none}
 <main id="app" hidden>
   <section class="bay" aria-label="현재 화면">
     <div class="tally">
-      <span class="dot" aria-hidden="true"></span>
-      <span class="name">On Air</span>
-      <span class="note">청중이 지금 보고 있는 화면</span>
+      <span class="name">현재 화면</span>
+      <span class="note">지금 청중이 보고 있는 장면</span>
     </div>
     <div class="stage"><iframe id="mirror" title="현재 슬라이드"></iframe></div>
   </section>
 
-  <div class="bay side" aria-label="다음 화면과 메모">
+  <div class="bay side" aria-label="다음 화면과 대본">
     <div class="tally next">
-      <span class="dot" aria-hidden="true"></span>
-      <span class="name" id="prevLabel">Next</span>
+      <span class="name" id="prevLabel">다음 화면</span>
       <div class="spacer"></div>
-      <button id="resync" title="내 화면(현재·다음)만 처음부터 다시 그립니다 — 청중 화면은 건드리지 않습니다">내 화면 다시 그리기</button>
+      <button id="resync" title="내 화면만 처음부터 다시 그립니다. 청중 화면은 건드리지 않습니다">내 화면 다시 그리기</button>
     </div>
     <div class="stage"><iframe id="preview" title="다음 슬라이드"></iframe></div>
 
     <section class="cue">
       <div class="cue-head">
-        <h2>큐 시트</h2>
+        <h2>대본</h2>
         <span id="noteFor"></span>
         <span id="noteMap"></span>
         <span id="savedTag" aria-live="polite">저장됨</span>
       </div>
       <div class="cue-tools">
         <span class="fontgrp">
-          <button id="fontDown" title="메모 글씨 작게" aria-label="메모 글씨 작게">가−</button>
-          <button id="fontUp" title="메모 글씨 크게" aria-label="메모 글씨 크게">가＋</button>
+          <button id="fontDown" title="대본 글씨 작게" aria-label="대본 글씨 작게">가−</button>
+          <button id="fontUp" title="대본 글씨 크게" aria-label="대본 글씨 크게">가＋</button>
         </span>
         <div class="spacer"></div>
-        <button id="importBtn" title="내보낸 노트 파일(.md)을 불러옵니다">노트 불러오기</button>
-        <button id="exportBtn" title="이 자료의 메모를 .md 파일로 저장합니다">노트 저장</button>
+        <button id="importBtn" title="내보낸 대본 파일(.md)을 불러옵니다">대본 불러오기</button>
+        <button id="exportBtn" title="이 자료의 대본을 .md 파일로 저장합니다">대본 저장</button>
         <input type="file" id="mdInput" accept=".md,text/markdown">
       </div>
-      <textarea id="note" aria-label="이 페이지 메모" spellcheck="false"
-        placeholder="이 페이지에서 할 말을 적어두세요…"></textarea>
+      <textarea id="note" aria-label="이 장 대본" spellcheck="false"
+        placeholder="이 장에서 할 말을 적어두세요…"></textarea>
       <div id="nextnote"></div>
       <details id="orphanBox" hidden>
         <summary id="orphanSum"></summary>
@@ -490,7 +438,7 @@ input[type=file]{display:none}
 <footer class="transport" id="transport" hidden>
   <button id="prevBtn" class="tbtn" aria-label="이전 슬라이드">◀ 이전</button>
   <button id="nextBtn" class="tbtn live" aria-label="다음 슬라이드">다음 ▶</button>
-  <span class="hint"><kbd>→</kbd><kbd>Space</kbd> 다음 · <kbd>←</kbd> 이전 · 청중 화면에서 <kbd>F</kbd> 전체화면</span>
+  <span class="hint"><kbd>→</kbd> 다음, <kbd>←</kbd> 이전 · 청중 화면에서 <kbd>F</kbd> 전체화면</span>
   <span id="flash" role="status"></span>
   <div class="spacer"></div>
   <div class="trim">
@@ -574,16 +522,16 @@ function sanitizeName(s){
   return out || 'deck';
 }
 function noteFileName(deckName, today){
-  return `${today}_${sanitizeName(deckName)}_노트.md`;
+  return `${today}_${sanitizeName(deckName)}_대본.md`;
 }
 
 // 사람이 읽을 수 있는 대본 겸 가져오기용 파일. 연결의 근거는 slide 주석뿐이고
 // 페이지 번호는 참고값이다.
 function serializeNotes(o){
   const L = [];
-  L.push(`# ${o.deckName} — 발표 노트`);
-  L.push(`<!-- html-presenter notes v1 · ${o.total}페이지 · ${o.today} -->`);
-  L.push('<!-- 이 파일은 자유롭게 고쳐도 되지만, slide 주석은 지우지 마세요 —');
+  L.push(`# ${o.deckName} 발표 대본`);
+  L.push(`<!-- html-presenter notes v1 · ${o.total}장, ${o.today} -->`);
+  L.push('<!-- 이 파일은 자유롭게 고쳐도 되지만, slide 주석은 지우지 마세요.');
   L.push('     다시 가져올 때 노트가 제자리를 찾는 표시입니다. -->');
   (o.notes || []).forEach(n => {
     L.push('');
@@ -669,7 +617,7 @@ function loadDeck(text, name){
   if (deckName) { clearTimeout(saveT); saveRecNow(); }   // 덱을 바꾸기 전에 이전 덱의 대기 중인 저장을 flush
   deckHTML = text; deckName = name || 'deck.html'; step = 0; deadWarned = false;
   $('#deckname').textContent = deckName;
-  document.title = deckName + ' — 발표자 콘솔';
+  document.title = deckName + ' (발표자 콘솔)';
   $('#dropzone').hidden = true;
   ['#app','#rack','#transport'].forEach(s => $(s).hidden = false);
   mirror = writeFrame(mirror, 0);
@@ -691,7 +639,7 @@ function loadDeck(text, name){
   }, 1000);   // 덱이 첫 장을 늦게 표시하는 경우
   setTimeout(resettleAnchors, 2500);   // 더 느리게 정착하는 덱을 위한 두 번째 체크포인트
   if (/(?:<img[^>]+src|url\()\s*=?\s*["']?(?!https?:|data:|\/\/|#)[\w.][^"')>]*/i.test(deckHTML))
-    flash('이미지가 별도 파일로 분리된 자료입니다 — 단일 HTML로 합쳐야 이미지가 표시됩니다.');
+    flash('이미지가 별도 파일로 분리된 자료입니다. 단일 HTML로 합쳐야 이미지가 표시됩니다.');
   reqWakeLock();
   store.set('ptlast', JSON.stringify({ name: deckName, html: deckHTML }));
 }
@@ -710,10 +658,6 @@ function renderSetup(){
   $('#startBtn').title = ready ? '' : '발표 자료를 먼저 불러와 주세요';
   // ON AIR 표시등 — 준비되면 켜진다
   $('.patch').classList.toggle('armed', ready);
-  $('#railState').textContent = ready ? 'READY' : 'STANDBY';
-  $('#onairCap').textContent = ready
-    ? (staged.notes ? '자료·대본 준비됨' : '자료 준비됨 · 대본은 선택입니다')
-    : '자료를 넣으면 준비됩니다';
 }
 function stageFile(file, done){
   const r = new FileReader();
@@ -895,8 +839,8 @@ function updateStep(st){
   const chip = $('#posChip');
   chip.textContent = s ? `${s.i + 1} / ${s.n}` : `${step + 1} 장`;
   chip.classList.toggle('at-end', !!(s && s.i >= s.n - 1));
-  $('#prevLabel').textContent = (s && s.i >= s.n - 1) ? 'Next — 마지막 장' : 'Next';
-  $('#noteFor').textContent = s ? `${s.i + 1} / ${s.n} 페이지` : `${step + 1} 페이지`;
+  $('#prevLabel').textContent = (s && s.i >= s.n - 1) ? '다음 화면 (마지막 장)' : '다음 화면';
+  $('#noteFor').textContent = s ? `${s.i + 1} / ${s.n} 장` : `${step + 1} 장`;
 }
 function endFlash(dir){
   flash(dir > 0 ? '마지막 슬라이드입니다.' : '첫 슬라이드입니다.');
@@ -951,7 +895,12 @@ function editJump(){
   chip.after(input);
   chip.hidden = true;
   input.focus();
+  // remove() 가 blur 를 발동시켜 done() 이 두 번 돌았다 → 두 번째 remove() 가
+  // 매번 예외를 던졌다. 한 번만 닫히도록 잠근다.
+  let closed = false;
   const done = commit => {
+    if (closed) return;
+    closed = true;
     const v = input.value.trim();
     input.remove(); chip.hidden = false;
     if (commit && /^\d{1,4}$/.test(v)) jumpTo(Number(v));
@@ -1052,7 +1001,7 @@ restoreNoticeBtn();
 // screen.isExtended 로 판단되는 상황에서만 띄운다. 무조건 뜨는 경고는 곧 무시된다.
 function warnScreenExposure(){
   if (screen.isExtended !== false) return;      // 확장 모드거나 판단 불가 → 경고하지 않는다
-  showNotice('화면이 하나입니다 — 이대로면 발표자 메모가 청중에게 보입니다. ' +
+  showNotice('화면이 하나입니다. 이대로면 발표자 대본이 청중에게 보입니다. ' +
              '빔프로젝터는 “확장” 모드로 연결하고, 온라인이면 “창 공유”로 「[청중 화면] …」 창만 공유하세요.');
 }
 
@@ -1168,7 +1117,7 @@ setInterval(() => {
   $('#trimLabel').textContent = auto ? '청중 화면 자동 정렬' : '청중 화면만 보정';
   $('#trimLabel').title = auto
     ? '이 자료는 위치를 읽을 수 있어 어긋나면 자동으로 맞춰집니다'
-    : '이 자료는 위치를 읽을 수 없어 자동 정렬이 안 됩니다 — 어긋나면 직접 맞춰주세요';
+    : '이 자료는 위치를 읽을 수 없어 자동 정렬이 안 됩니다. 어긋나면 직접 맞춰주세요';
 }, 1000);
 
 /* ---------- 타이머 · 시계 ---------- */
@@ -1208,7 +1157,7 @@ const recKey = name => `ptnotes2:${name || deckName}`;
 function saveRecNow(){
   if (!store.set(recKey(), JSON.stringify(rec)) && !warnedFull) {
     warnedFull = true;
-    showNotice('브라우저 저장 공간이 꽉 차 메모를 영구 저장할 수 없습니다. 노트를 내보내 두세요.');
+    showNotice('브라우저 저장 공간이 꽉 차 대본을 영구 저장할 수 없습니다. 대본을 파일로 내보내 두세요.');
   }
 }
 function saveRec(){ clearTimeout(saveT); saveT = setTimeout(saveRecNow, 300); }
@@ -1385,7 +1334,7 @@ function renderNoteMap(){
     if (i > step && next < 0) next = i;
   }
   if (!count) { el.textContent = ''; return; }
-  el.textContent = next >= 0 ? `노트 ${count}개 · 다음 ${next + 1}장` : `노트 ${count}개 · 이후 없음`;
+  el.textContent = next >= 0 ? `${count}곳 작성 · 다음 ${next + 1}장` : `${count}곳 작성 · 이후 없음`;
 }
 
 function loadNotes(){
@@ -1438,14 +1387,14 @@ function exportNotes(){
   const orphansOut = (rec.orphans || []).slice();
   Object.keys(rec.byIndex).forEach(k => {
     const i = Number(k);
-    if (rec.byIndex[k]) orphansOut.push({ text: rec.byIndex[k], hint: `${i + 1}번째 장 (위치 기반 메모)` });
+    if (rec.byIndex[k]) orphansOut.push({ text: rec.byIndex[k], hint: `${i + 1}번째 장 (위치 기반 대본)` });
   });
   // 현재 덱에 없는 앵커에 남아있는 노트도 미배정으로 함께 내보낸다 — 그렇지 않으면
   // 큐 시트·미배정함·내보내기 어디에도 나타나지 않아 사실상 복구 불가가 된다.
   if (list) {
     const inDeck = new Set(list);
     Object.keys(rec.anchors).forEach(a => {
-      if (!inDeck.has(a) && rec.anchors[a]) orphansOut.push({ text: rec.anchors[a], hint: '이 자료에 없는 위치의 메모' });
+      if (!inDeck.has(a) && rec.anchors[a]) orphansOut.push({ text: rec.anchors[a], hint: '이 자료에 없는 위치의 대본' });
     });
   }
   notes.sort((a, b) => a.index - b.index);
@@ -1464,7 +1413,7 @@ $('#exportBtn').onclick = function(){ this.blur(); exportNotes(); };
 function refreshExportBtn(){
   const has = Object.keys(rec.anchors).length || Object.keys(rec.byIndex).length || (rec.orphans || []).length;
   $('#exportBtn').disabled = !has;
-  $('#exportBtn').title = has ? '' : '내보낼 메모가 없습니다';
+  $('#exportBtn').title = has ? '' : '내보낼 대본이 없습니다';
 }
 /* ── 미배정 노트함 ── */
 function renderOrphans(){
@@ -1472,7 +1421,7 @@ function renderOrphans(){
   const items = rec.orphans || [];
   box.hidden = !items.length;
   if (!items.length) { list.textContent = ''; return; }
-  $('#orphanSum').textContent = `자리를 못 찾은 노트 ${items.length}개`;
+  $('#orphanSum').textContent = `자리를 못 찾은 대본 ${items.length}개`;
   list.textContent = '';
   items.forEach((o, idx) => {
     const wrap = document.createElement('div');
@@ -1486,13 +1435,13 @@ function renderOrphans(){
     const row = document.createElement('div');
     row.className = 'row';
     const put = document.createElement('button');
-    put.textContent = '이 페이지에 붙이기';
+    put.textContent = '이 장에 붙이기';
     put.onclick = () => {
       const cur = noteGet(step);
       noteSet(step, cur ? cur + '\n\n' + o.text : o.text);   // 덮지 않고 이어 붙인다
       rec.orphans.splice(idx, 1);
       saveRecNow(); loadNotes(); refreshExportBtn();
-      flash(`${step + 1}페이지에 붙였습니다.`);
+      flash(`${step + 1}장에 붙였습니다.`);
     };
     const del = document.createElement('button');
     del.textContent = '삭제';
@@ -1521,7 +1470,7 @@ function importNotes(text){
   const clash = fileKeys.filter(a => rec.anchors[a] && rec.anchors[a] !== parsed.anchors[a]);
   let replace = true;
   if (clash.length) {
-    replace = confirm(`${clash.length}개 페이지에 이미 다른 노트가 있습니다.\n\n확인 = 파일 것으로 교체(기존 노트는 미배정함으로 이동)\n취소 = 기존 유지(파일 노트를 미배정함으로 이동)`);
+    replace = confirm(`${clash.length}개 장에 이미 다른 대본이 있습니다.\n\n확인 = 파일 것으로 교체(원래 대본은 미배정함으로 이동)\n취소 = 원래 것 유지(파일 대본을 미배정함으로 이동)`);
   }
 
   store.set(recKey() + ':undo', JSON.stringify(rec));   // 되돌리기 스냅샷
@@ -1576,7 +1525,7 @@ try {
   if (last && last.html) {
     const b = $('#resumeBtn');
     b.hidden = false;
-    b.textContent = '지난 발표 이어서 열기 — ' + last.name;
+    b.textContent = '지난 발표 이어서 열기: ' + last.name;
     b.onclick = () => { staged.deck = { text: last.html, name: last.name }; renderSetup(); };
   }
 } catch (_) {}
