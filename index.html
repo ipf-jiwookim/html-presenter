@@ -202,6 +202,23 @@ kbd{
 input[type=file]{display:none}
 #resumeBtn{background:transparent;border-color:var(--rule);color:var(--next)}
 
+/* ── 단축키 도움말 ── */
+#help{position:fixed;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;background:rgba(14,16,19,.88)}
+.help-card{background:var(--console);border:1px solid var(--rule);border-radius:14px;padding:26px 30px;max-width:min(560px,90vw)}
+.help-card h2{margin:0 0 16px;font-family:var(--label);font-size:15px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--next)}
+.help-card dl{margin:0;display:grid;gap:9px}
+.help-card dl > div{display:flex;align-items:baseline;gap:14px}
+.help-card dt{flex:0 0 12.5rem;font-family:var(--data);font-size:13px;color:var(--ink)}
+.help-card dd{margin:0;font-size:14px;color:var(--ink-dim)}
+.help-card dd em{font-style:normal;color:#6c7482}
+.help-foot{margin:18px 0 0;font-size:12.5px;line-height:1.7;color:var(--ink-dim)}
+.help-card > button{margin-top:18px}
+#posChip{cursor:pointer}
+#posChip:hover{border-color:var(--live)}
+#jumpInput{width:4.5ch;font:700 16px var(--data);background:#0f1216;color:var(--ink);
+  border:1px solid var(--live);border-radius:5px;padding:4px 6px;text-align:center}
+#noteMap{font-family:var(--label);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:#6c7482;white-space:nowrap}
+
 /* ── 드래그 안내 ── */
 #dropHint{
   position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;
@@ -235,8 +252,27 @@ input[type=file]{display:none}
   <button id="timerBtn" class="icon-btn" aria-label="타이머 시작 또는 일시정지">▶</button>
   <button id="resetBtn" class="icon-btn" aria-label="타이머 리셋">↺</button>
   <button id="openAud" class="primary">청중 화면 열기</button>
+  <button id="fsHint" class="icon-btn" title="청중 화면을 전체화면으로 만드는 방법" aria-label="청중 화면 전체화면 방법" hidden>⛶</button>
+  <button id="helpBtn" class="icon-btn" title="단축키 (?)" aria-label="단축키 도움말">?</button>
   <button id="reloadBtn" class="ghost">파일 교체</button>
 </header>
+
+<div id="help" hidden>
+  <div class="help-card">
+    <h2>단축키</h2>
+    <dl>
+      <div><dt>→ · Space · PageDown</dt><dd>다음 장</dd></div>
+      <div><dt>← · PageUp</dt><dd>이전 장</dd></div>
+      <div><dt>숫자 + Enter</dt><dd>그 번호 장으로 바로 가기</dd></div>
+      <div><dt>F</dt><dd>전체화면 <em>(청중 창에서)</em></dd></div>
+      <div><dt>?</dt><dd>이 도움말 열고 닫기</dd></div>
+      <div><dt>Esc</dt><dd>닫기</dd></div>
+    </dl>
+    <p class="help-foot">위치 숫자(<b>1 / 5</b>)를 클릭해도 장 번호를 입력할 수 있습니다.
+       메모를 쓰는 중에는 단축키가 동작하지 않습니다 — 글자가 그대로 입력됩니다.</p>
+    <button id="helpClose" class="primary">닫기</button>
+  </div>
+</div>
 
 <div id="dropHint" hidden>
   <div>여기에 놓으세요<small>발표 자료(.html) — 자료 교체 · 노트 파일(.md) — 메모 불러오기</small></div>
@@ -282,6 +318,7 @@ input[type=file]{display:none}
       <div class="cue-head">
         <h2>큐 시트</h2>
         <span id="noteFor"></span>
+        <span id="noteMap"></span>
         <span id="savedTag" aria-live="polite">저장됨</span>
         <span class="fontgrp">
           <button id="fontDown" title="메모 글씨 작게" aria-label="메모 글씨 작게">가−</button>
@@ -694,6 +731,54 @@ function flash(msg){
   flash._t = setTimeout(() => { el.textContent = ''; }, 2200);
 }
 
+// 특정 장으로 바로 가기 — Q&A 에서 "3번 다시 보여주세요"에 12번 누르지 않게 한다.
+// nav() 를 반복 호출해 모든 창·노트·미리보기 동기화를 그대로 재사용한다.
+function jumpTo(target1){
+  const s0 = deckState(mirror.contentWindow);
+  const total = s0 ? s0.n : 0;
+  let t = Math.round(target1) - 1;
+  if (!isFinite(t)) return;
+  if (total) t = Math.max(0, Math.min(t, total - 1));
+  else t = Math.max(0, t);
+  let cur = s0 ? s0.i : step;
+  if (t === cur) { flash(`이미 ${t + 1}번째 장입니다.`); return; }
+  const dir = t > cur ? 1 : -1;
+  for (let guard = 0; guard < 400 && cur !== t; guard++) {
+    nav(dir);
+    const s1 = deckState(mirror.contentWindow);
+    const now = s1 ? s1.i : step;
+    if (now === cur) break;                     // 더 이상 안 움직이면 포기
+    cur = now;
+  }
+  flash(cur === t ? `${t + 1}번째 장으로 이동했습니다.` : `${cur + 1}번째 장까지만 이동했습니다.`);
+}
+function editJump(){
+  if ($('#jumpInput') || !deckHTML) return;
+  const chip = $('#posChip');
+  const input = document.createElement('input');
+  input.id = 'jumpInput';
+  input.type = 'text';
+  input.inputMode = 'numeric';
+  input.setAttribute('aria-label', '이동할 장 번호');
+  input.placeholder = '장';
+  chip.after(input);
+  chip.hidden = true;
+  input.focus();
+  const done = commit => {
+    const v = input.value.trim();
+    input.remove(); chip.hidden = false;
+    if (commit && /^\d{1,4}$/.test(v)) jumpTo(Number(v));
+    else if (commit && v) flash('장 번호를 숫자로 입력해 주세요.');
+  };
+  input.onkeydown = e => {
+    e.stopPropagation();
+    if (e.key === 'Enter') { e.preventDefault(); done(true); }
+    else if (e.key === 'Escape') { e.preventDefault(); done(false); }
+  };
+  input.onblur = () => done(false);
+}
+$('#posChip').onclick = editJump;
+
 $('#nextBtn').onclick = function(){ this.blur(); nav(1); };
 $('#prevBtn').onclick = function(){ this.blur(); nav(-1); };
 $('#resync').onclick = function(){ this.blur(); mirror = writeFrame(mirror, 0); preview = writeFrame(preview, 1); flash('현재·다음 화면을 다시 그렸습니다.'); };
@@ -713,10 +798,39 @@ $('#audPrev').onclick = function(){ this.blur(); trimAudience(-1); };
 
 window.addEventListener('keydown', e => {
   const t = e.target.tagName;
+  if (e.key === 'Escape' && !$('#help').hidden) { e.preventDefault(); toggleHelp(false); return; }
   // 버튼에 포커스가 있을 때 Space 는 그 버튼을 누르는 동작이다 — 슬라이드까지 같이 넘기면 안 된다
-  if (t === 'TEXTAREA' || t === 'INPUT' || t === 'BUTTON' || t === 'SELECT' || !deckHTML) return;
+  if (t === 'TEXTAREA' || t === 'INPUT' || t === 'BUTTON' || t === 'SELECT') return;
+  if (e.key === '?' || (e.key === '/' && e.shiftKey)) { e.preventDefault(); toggleHelp(); return; }
+  if (!deckHTML) return;
+  if (/^[0-9]$/.test(e.key)) { e.preventDefault(); editJump(); const i = $('#jumpInput'); if (i) i.value = e.key; return; }
   if (['ArrowRight','PageDown',' '].includes(e.key)) { e.preventDefault(); nav(1); }
   else if (['ArrowLeft','PageUp'].includes(e.key)) { e.preventDefault(); nav(-1); }
+});
+
+// ══ 단축키 도움말 ══
+function toggleHelp(show){
+  const el = $('#help');
+  el.hidden = show === undefined ? !el.hidden : !show;
+}
+$('#helpBtn').onclick = function(){ this.blur(); toggleHelp(); };
+$('#helpClose').onclick = function(){ this.blur(); toggleHelp(false); };
+$('#help').onclick = e => { if (e.target === $('#help')) toggleHelp(false); };
+
+// ══ 청중 창 전체화면 안내 — 원격으로 전체화면을 걸 수는 없다(브라우저가 막는다).
+// 실측 확인: 콘솔에서 requestFullscreen 하면 "Permissions check failed" 로 거부된다.
+// 그래서 그 창으로 포커스를 옮겨주고 무엇을 누르면 되는지 알려준다. ══
+$('#fsHint').onclick = function(){
+  this.blur();
+  if (!audience || audience.closed) { flash('청중 화면이 열려 있지 않습니다.'); return; }
+  audience.focus();
+  flash('청중 창에서 F 를 누르거나 화면의 [⛶ 전체화면] 버튼을 클릭하세요.');
+};
+
+// ══ 발표 중 실수로 창을 닫는 것 방지 — 발표를 시작한 뒤에만 묻는다 ══
+window.addEventListener('beforeunload', e => {
+  if (!deckHTML || !started) return;
+  e.preventDefault(); e.returnValue = '';
 });
 
 /* ---------- 청중 창 ---------- */
@@ -739,11 +853,21 @@ function openAudience(){
   $('#notice').hidden = true;
   writeDoc(audience);
   hookAudience();
+  warnScreenExposure();
   if (step > 0) setTimeout(() => replay(audience, step), 900);
   audience.focus();
 }
 $('#openAud').onclick = function(){ this.blur(); openAudience(); };
 restoreNoticeBtn();
+
+// 화면이 하나뿐이면 발표자 메모가 청중에게 그대로 노출될 수 있다 —
+// 대면이면 미러링(복제) 상태, 온라인이면 "전체 화면 공유"가 그 경우다.
+// screen.isExtended 로 판단되는 상황에서만 띄운다. 무조건 뜨는 경고는 곧 무시된다.
+function warnScreenExposure(){
+  if (screen.isExtended !== false) return;      // 확장 모드거나 판단 불가 → 경고하지 않는다
+  showNotice('화면이 하나입니다 — 이대로면 발표자 메모가 청중에게 보입니다. ' +
+             '빔프로젝터는 “확장” 모드로 연결하고, 온라인이면 “창 공유”로 「[청중 화면] …」 창만 공유하세요.');
+}
 
 function hookAudience(){
   // 청중 창에서 직접 키를 누르면 발표자 콘솔도 따라오게 역방향 동기화
@@ -768,7 +892,7 @@ function injectAudienceUX(){
       '.pt-hidecursor,.pt-hidecursor *{cursor:none!important}' +
       '#ptFsBtn{position:fixed;right:18px;bottom:18px;z-index:2147483647;' +
       'font:600 16px/1 -apple-system,"Apple SD Gothic Neo",sans-serif;letter-spacing:.02em;' +
-      'padding:14px 20px;border-radius:10px;border:1px solid rgba(255,255,255,.22);' +
+      'padding:16px 22px;border-radius:10px;border:2px solid rgba(255,255,255,.5);' +
       'background:rgba(10,12,15,.72);color:#fff;cursor:pointer;opacity:.92;' +
       'transition:opacity .3s ease}' +
       '#ptFsBtn:hover{opacity:1}' +
@@ -799,7 +923,10 @@ function injectAudienceUX(){
       clearTimeout(idleT);
       idleT = win.setTimeout(() => {
         d.documentElement.classList.add('pt-hidecursor');
-        btn.classList.add('pt-fade');
+        // 전체화면에 들어가기 전에는 버튼을 숨기지 않는다 — 숨기면 그런 버튼이
+        // 있다는 걸 아무도 모른다(실제로 opacity:0 상태라 못 찾았다).
+        // 전체화면에 들어간 뒤에는 할 일이 없으므로 그때부터 숨긴다.
+        if (d.fullscreenElement) btn.classList.add('pt-fade');
       }, 4000);
     };
     d.addEventListener('mousemove', poke);
@@ -846,6 +973,7 @@ setInterval(() => {
   if (!on && audience) audience = null;
   autoSyncAudience();
   const auto = on && !!deckState(audience);
+  $('#fsHint').hidden = !on;
   $('#audNext').disabled = $('#audPrev').disabled = !on || auto;
   $('#trimLabel').textContent = auto ? '청중 화면 자동 정렬' : '청중 화면만 보정';
   $('#trimLabel').title = auto
@@ -1045,11 +1173,31 @@ function resettleAnchors(){
 $('#note').oninput = () => {
   noteSet(step, $('#note').value);
   refreshExportBtn();
+  renderNoteMap();
   const tag = $('#savedTag');
   tag.classList.add('show');
   clearTimeout($('#note')._t);
   $('#note')._t = setTimeout(() => tag.classList.remove('show'), 1200);
 };
+// 노트가 어느 장에 있는지 — "다음 장 메모"만 보이면 3장 뒤 중요한 멘트를 놓친다
+function renderNoteMap(){
+  const el = $('#noteMap');
+  const list = deckAnchors();
+  const total = (deckState(mirror.contentWindow) || {}).n || 0;
+  const has = i => {
+    const a = list && list[i];
+    return !!((a && rec.anchors[a]) || rec.byIndex[String(i)]);
+  };
+  let count = 0, next = -1;
+  for (let i = 0; i < total; i++) {
+    if (!has(i)) continue;
+    count++;
+    if (i > step && next < 0) next = i;
+  }
+  if (!count) { el.textContent = ''; return; }
+  el.textContent = next >= 0 ? `노트 ${count}개 · 다음 ${next + 1}장` : `노트 ${count}개 · 이후 없음`;
+}
+
 function loadNotes(){
   // 값이 같은데도 대입하면 한글 조합이 끊기고 커서가 맨 뒤로 튄다 — 달라졌을 때만 쓴다
   const text = noteGet(step);
@@ -1059,6 +1207,7 @@ function loadNotes(){
   applyFontSize();
   renderOrphans();
   refreshExportBtn();
+  renderNoteMap();
 }
 /* ── 큐 시트 글씨 크기 ── */
 const FONT_STEPS = [13, 16, 20, 24, 28];
