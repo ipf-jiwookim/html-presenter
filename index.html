@@ -365,8 +365,9 @@ function loadDeck(text, name){
   // 청중 창은 새 Window 가 필요하다(아래 freshFrame 주석 참고). 닫고 다시 열도록 안내한다.
   if (audience && !audience.closed) {
     audience.close(); audience = null;
-    showNotice('발표 자료가 바뀌었습니다. 청중 화면을 다시 열어주세요.');
+    showNotice('발표 자료가 바뀌었습니다. 청중 화면을 다시 열어주세요.', true);
   }
+  loadRec();
   updateStep(); loadNotes();
   setTimeout(() => updateStep(), 1000);   // 덱이 첫 장을 늦게 표시하는 경우
   reqWakeLock();
@@ -550,7 +551,11 @@ window.addEventListener('keydown', e => {
 });
 
 /* ---------- 청중 창 ---------- */
-function showNotice(msg){ $('#noticeMsg').textContent = msg; $('#notice').hidden = false; }
+function showNotice(msg, withAudienceBtn){
+  $('#noticeMsg').textContent = msg;
+  $('#noticeBtn').hidden = !withAudienceBtn;
+  $('#notice').hidden = false;
+}
 function openAudience(){
   if (audience && !audience.closed) { audience.focus(); return; }  // 이미 열려 있으면 다시 그리지 않는다
   // 크기 옵션을 줘야 Chrome 이 "새 탭" 이 아니라 독립 창으로 연다 —
@@ -559,7 +564,7 @@ function openAudience(){
   audience = window.open('', 'pt_audience',
     `popup=yes,width=${w},height=${Math.round(w * 9 / 16)},left=60,top=60`);
   if (!audience) {
-    showNotice('팝업이 차단되었습니다. 주소창 오른쪽 팝업 아이콘에서 “항상 허용”을 선택한 뒤 다시 열어주세요.');
+    showNotice('팝업이 차단되었습니다. 주소창 오른쪽 팝업 아이콘에서 “항상 허용”을 선택한 뒤 다시 열어주세요.', true);
     return;
   }
   $('#notice').hidden = true;
@@ -674,27 +679,92 @@ $('#resetBtn').onclick = function(){ this.blur(); pauseTimer(); acc = 0; started
 const hhmm = new Intl.DateTimeFormat('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
 setInterval(() => { $('#clock').textContent = hhmm.format(new Date()); }, 1000);
 
-/* ---------- 페이지별 메모 ----------
-   localStorage 가 막힌 환경(샌드박스·시크릿 모드)에서도 발표 중에는 메모가 살아있도록
-   메모리 폴백을 둔다. 저장 실패로 콘솔 전체가 멈추는 일은 없어야 한다. */
+/* ---------- 노트 레코드 ----------
+   덱당 키 1개(ptnotes2:{deckName})에 앵커 노트·인덱스 폴백·미배정함·설정을 모아 둔다. */
 const mem = {};
 const store = {
   get(k){ try { const v = localStorage.getItem(k); return v === null ? (k in mem ? mem[k] : null) : v; } catch (_) { return k in mem ? mem[k] : null; } },
-  set(k, v){ mem[k] = v; try { localStorage.setItem(k, v); } catch (_) {} }
+  set(k, v){ mem[k] = v; try { localStorage.setItem(k, v); return true; } catch (_) { return false; } },
+  keys(){ try { return Object.keys(localStorage); } catch (_) { return Object.keys(mem); } }
 };
-const noteKey = n => `ptnotes:${deckName}:${n}`;
+
+let rec = blankRec(), warnedFull = false, saveT = null;
+function blankRec(){ return { anchors: {}, byIndex: {}, orphans: [], fontSize: 16 }; }
+const recKey = name => `ptnotes2:${name || deckName}`;
+
+function saveRecNow(){
+  if (!store.set(recKey(), JSON.stringify(rec)) && !warnedFull) {
+    warnedFull = true;
+    showNotice('브라우저 저장 공간이 꽉 차 메모를 영구 저장할 수 없습니다. 노트를 내보내 두세요.');
+  }
+}
+function saveRec(){ clearTimeout(saveT); saveT = setTimeout(saveRecNow, 300); }
+
+// 앵커는 미리 계산하지 않는다 — 덱 스크립트가 늦게 초기화되면 빈 지문이 캐시된다.
+let anchorCache = null;
+function deckAnchors(){
+  try {
+    const s = deckState(mirror.contentWindow);
+    if (!s || !s.els) return null;
+    const key = deckName + '|' + s.n;
+    if (anchorCache && anchorCache.key === key) return anchorCache.list;
+    const texts = s.els.map(el => el.textContent || '');
+    if (!texts.some(t => t.trim())) return null;   // 아직 초기화 전 — 캐시하지 않고 재시도
+    const list = slideAnchors(texts);
+    anchorCache = { key, list };
+    return list;
+  } catch (_) { return null; }
+}
+function anchorFor(i){
+  const list = deckAnchors();
+  return (list && list[i]) || null;
+}
+function noteGet(i){
+  const a = anchorFor(i);
+  if (a && rec.anchors[a] != null) return rec.anchors[a];
+  return rec.byIndex[String(i)] || '';
+}
+function noteSet(i, text){
+  const a = anchorFor(i);
+  if (a) { rec.anchors[a] = text; delete rec.byIndex[String(i)]; }
+  else rec.byIndex[String(i)] = text;
+  saveRec();
+}
+
+function loadRec(){
+  anchorCache = null;
+  const raw = store.get(recKey());
+  if (raw) { try { rec = Object.assign(blankRec(), JSON.parse(raw)); return; } catch (_) {} }
+  rec = blankRec();
+  // 구키(ptnotes:{deckName}:{n}) 마이그레이션 — 구키는 롤백용으로 남긴다
+  const old = {};
+  store.keys().forEach(k => {
+    const p = k.indexOf(`ptnotes:${deckName}:`);
+    if (p === 0) old[k.slice(`ptnotes:${deckName}:`.length)] = store.get(k);
+  });
+  if (Object.keys(old).length) {
+    const moved = migrateIndexed(old, deckAnchors());
+    rec.anchors = moved.anchors; rec.byIndex = moved.byIndex;
+    saveRecNow();
+  }
+}
+
 $('#note').oninput = () => {
-  store.set(noteKey(step), $('#note').value);
+  noteSet(step, $('#note').value);
   const tag = $('#savedTag');
   tag.classList.add('show');
   clearTimeout($('#note')._t);
   $('#note')._t = setTimeout(() => tag.classList.remove('show'), 1200);
 };
 function loadNotes(){
-  $('#note').value = store.get(noteKey(step)) || '';
-  $('#nextnote').textContent = store.get(noteKey(step + 1)) || '';
+  $('#note').value = noteGet(step);
+  $('#nextnote').textContent = noteGet(step + 1);
   $('#savedTag').classList.remove('show');
+  applyFontSize();
+  renderOrphans();
 }
+function applyFontSize(){}
+function renderOrphans(){}
 
 /* ---------- 화면 꺼짐 방지 ---------- */
 function reqWakeLock(){
