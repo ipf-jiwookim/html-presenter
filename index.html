@@ -355,6 +355,7 @@ let mirror = $('#mirror'), preview = $('#preview');   // 덱 로드마다 새 if
 
 /* ---------- 덱 로드 ---------- */
 function loadDeck(text, name){
+  $('#notice').hidden = true; restoreNoticeBtn();   // 이전 덱의 알림·버튼 상태가 새 덱으로 새지 않게 초기화
   if (deckName) { clearTimeout(saveT); saveRecNow(); }   // 덱을 바꾸기 전에 이전 덱의 대기 중인 저장을 flush
   deckHTML = text; deckName = name || 'deck.html'; step = 0;
   $('#deckname').textContent = deckName;
@@ -371,7 +372,10 @@ function loadDeck(text, name){
   loadRec();
   retryMigration();
   updateStep(); loadNotes();
-  setTimeout(() => { updateStep(); retryMigration(); }, 1000);   // 덱이 첫 장을 늦게 표시하는 경우
+  setTimeout(() => {
+    updateStep(); retryMigration();
+    if (!Object.keys(rec.anchors).length && !Object.keys(rec.byIndex).length) offerRecovery();
+  }, 1000);   // 덱이 첫 장을 늦게 표시하는 경우
   reqWakeLock();
   store.set('ptlast', JSON.stringify({ name: deckName, html: deckHTML }));
 }
@@ -759,14 +763,14 @@ function offerRecovery(){
   const mine = deckAnchors();
   if (!mine) return;
   const mineReal = mine.filter(a => !a.startsWith('empty'));
-  if (!mineReal.length) return;
+  if (mineReal.length < 2) return;   // 실제 앵커 1개짜리 우연한 해시 일치로 오판하지 않도록 최소 2개 요구
   let best = null;
   store.keys().forEach(k => {
     if (k.indexOf('ptnotes2:') !== 0 || k === recKey() || k.endsWith(':undo')) return;
     let other;
     try { other = JSON.parse(store.get(k)); } catch (_) { return; }
     const keys = Object.keys((other && other.anchors) || {}).filter(a => !a.startsWith('empty'));
-    if (!keys.length) return;
+    if (keys.length < 2) return;   // 저장된 쪽도 실제 앵커 2개 미만이면 후보에서 제외
     const score = anchorOverlap(keys, mineReal);
     if (score >= 0.4 && (!best || score > best.score)) best = { key: k, score, count: keys.length, rec: other };
   });
