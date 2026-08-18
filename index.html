@@ -163,6 +163,17 @@ main{
   background:#12151a;color:var(--ink);border:1px solid var(--rule);border-radius:8px;
   font:16px/1.7 var(--ui);
 }
+/* 미리보기가 현재 화면과 완전히 같을 때(마지막 장이거나 더 넘어가지 않는 자료)
+   "다음 화면" 이라는 이름을 달고 복사본을 보여주면 발표자에게 거짓말이 된다.
+   판정을 잘못했을 때 실제 내용이 가려지지 않도록 덮지 않고 흐리게만 한다. */
+.stage-end{
+  position:absolute;inset:0;margin:0;display:none;place-items:center;
+  font-size:13px;color:#7b8390;background:rgba(10,11,13,.55);
+}
+.stage.at-end .stage-end{display:grid}
+.stage.at-end #preview{opacity:.22}
+#preview{transition:opacity .3s ease}
+
 #note::placeholder{color:#5d6572}
 #note:focus-visible{outline:2px solid var(--next);outline-offset:1px;border-color:transparent}
 #nextnote{margin:8px 14px 14px;font-size:13px;line-height:1.6;color:var(--ink-dim);max-height:5.5em;overflow:auto;white-space:pre-wrap}
@@ -484,7 +495,7 @@ input[type=file]{display:none}
       <div class="spacer"></div>
       <button id="resync" title="내 화면만 처음부터 다시 그립니다. 청중 화면은 건드리지 않습니다">내 화면 다시 그리기</button>
     </div>
-    <div class="stage"><iframe id="preview" title="다음 슬라이드"></iframe></div>
+    <div class="stage" id="previewStage"><iframe id="preview" title="다음 슬라이드"></iframe><p class="stage-end">다음 화면이 없습니다</p></div>
 
     <section class="cue">
       <div class="cue-head">
@@ -932,8 +943,24 @@ function settle(deadDir){
     if (deadDir !== undefined && step === beforeStep) warnDeadDeck(deadDir);
   }, 260);
 }
+// 미리보기가 현재 화면과 실질적으로 동일한지 판정한다.
+// sig() 는 첫 항목이 scrollTop 이라 구조 변화와 스크롤 변화를 함께 본다 →
+// 스크롤형 덱이 아직 더 내려갈 수 있으면 지문이 달라져 끝으로 오판하지 않는다.
+function markPreviewEnd(){
+  const stage = $('#previewStage');
+  if (!deckHTML) { stage.classList.remove('at-end'); return; }
+  const ms = deckState(mirror.contentWindow), ps = deckState(preview.contentWindow);
+  let same;
+  if (ms && ps) same = ps.i === ms.i;                  // 구조를 읽으면 인덱스만 비교
+  else {
+    const a = sig(preview.contentWindow), b = sig(mirror.contentWindow);
+    same = a !== null && a === b;
+  }
+  stage.classList.toggle('at-end', same);
+}
 // 미리보기는 항상 현재+1 — 마지막 장까지 갔다 와도 오프셋이 어긋나지 않게 맞춰준다
-function syncPreview(after){
+function syncPreview(after){ syncPreviewCore(after); markPreviewEnd(); }
+function syncPreviewCore(after){
   if (!after) return;
   const pw = preview.contentWindow, target = Math.min(after.i + 1, after.n - 1);
   for (let guard = 0; guard < 60; guard++) {
@@ -949,7 +976,7 @@ function updateStep(st){
   const chip = $('#posChip');
   chip.textContent = s ? `${s.i + 1} / ${s.n}` : `${step + 1} 장`;
   chip.classList.toggle('at-end', !!(s && s.i >= s.n - 1));
-  $('#prevLabel').textContent = (s && s.i >= s.n - 1) ? '다음 화면 (마지막 장)' : '다음 화면';
+  $('#prevLabel').textContent = '다음 화면';
   $('#noteFor').textContent = s ? `${s.i + 1} / ${s.n} 장` : `${step + 1} 장`;
 }
 function endFlash(dir){
@@ -1221,6 +1248,7 @@ setInterval(() => {
   el.classList.toggle('on', on);
   if (!on && audience) audience = null;
   autoSyncAudience();
+  markPreviewEnd();
   const auto = on && !!deckState(audience);
   $('#fsHint').hidden = !on;
   $('.trim').hidden = !on;                       // 청중 창이 없으면 보정할 대상이 없다
