@@ -355,6 +355,7 @@ let mirror = $('#mirror'), preview = $('#preview');   // 덱 로드마다 새 if
 
 /* ---------- 덱 로드 ---------- */
 function loadDeck(text, name){
+  if (deckName) { clearTimeout(saveT); saveRecNow(); }   // 덱을 바꾸기 전에 이전 덱의 대기 중인 저장을 flush
   deckHTML = text; deckName = name || 'deck.html'; step = 0;
   $('#deckname').textContent = deckName;
   document.title = deckName + ' — 발표자 콘솔';
@@ -369,7 +370,7 @@ function loadDeck(text, name){
   }
   loadRec();
   updateStep(); loadNotes();
-  setTimeout(() => updateStep(), 1000);   // 덱이 첫 장을 늦게 표시하는 경우
+  setTimeout(() => { updateStep(); retryMigration(); }, 1000);   // 덱이 첫 장을 늦게 표시하는 경우
   reqWakeLock();
   store.set('ptlast', JSON.stringify({ name: deckName, html: deckHTML }));
 }
@@ -688,7 +689,7 @@ const store = {
   keys(){ try { return Object.keys(localStorage); } catch (_) { return Object.keys(mem); } }
 };
 
-let rec = blankRec(), warnedFull = false, saveT = null;
+let rec = blankRec(), warnedFull = false, saveT = null, migrationPending = false;
 function blankRec(){ return { anchors: {}, byIndex: {}, orphans: [], fontSize: 16 }; }
 const recKey = name => `ptnotes2:${name || deckName}`;
 
@@ -733,6 +734,7 @@ function noteSet(i, text){
 
 function loadRec(){
   anchorCache = null;
+  migrationPending = false;
   const raw = store.get(recKey());
   if (raw) { try { rec = Object.assign(blankRec(), JSON.parse(raw)); return; } catch (_) {} }
   rec = blankRec();
@@ -743,10 +745,26 @@ function loadRec(){
     if (p === 0) old[k.slice(`ptnotes:${deckName}:`.length)] = store.get(k);
   });
   if (Object.keys(old).length) {
-    const moved = migrateIndexed(old, deckAnchors());
+    const anchors = deckAnchors();
+    const moved = migrateIndexed(old, anchors);
     rec.anchors = moved.anchors; rec.byIndex = moved.byIndex;
-    saveRecNow();
+    if (anchors) saveRecNow();
+    else migrationPending = true;   // 덱이 아직 준비되지 않아 인덱스로만 이관됨 — 나중에 승격 재시도
   }
+}
+
+// 덱이 늦게 초기화되는 경우, 인덱스로만 이관됐던 구노트를 앵커로 승격 재시도한다.
+// loadDeck() 의 1초 지연 보정과 같은 시점에 한 번만 재시도하고, 그래도 안 되면 byIndex로 계속 동작한다.
+function retryMigration(){
+  if (!migrationPending) return;
+  const anchors = deckAnchors();
+  if (!anchors) return;
+  migrationPending = false;
+  Object.keys(rec.byIndex).forEach(k => {
+    const a = anchors[Number(k)];
+    if (a) { rec.anchors[a] = rec.byIndex[k]; delete rec.byIndex[k]; }
+  });
+  saveRecNow();
 }
 
 $('#note').oninput = () => {
