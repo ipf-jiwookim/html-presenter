@@ -565,7 +565,7 @@ function nav(dir, includeAudience = true){
   sendKey(mw, dir);
   const after = deckState(mw);
   const moved = (before && after) ? after.i !== before.i : sig(mw) !== beforeSig;
-  if (!moved) { warnDeadDeck(dir); endFlash(dir); settle(); return; }
+  if (!moved) { endFlash(dir); settle(dir); return; }
   sendKey(preview.contentWindow, dir);
   syncPreview(after);
   step = after ? after.i : Math.max(0, step + dir);
@@ -574,11 +574,13 @@ function nav(dir, includeAudience = true){
   settle();
 }
 // 늦게 반응하는 덱(애니메이션 후 클래스 변경)을 위한 뒤늦은 보정
-function settle(){
+function settle(deadDir){
   clearTimeout(settle._t);
+  const beforeStep = step;
   settle._t = setTimeout(() => {
     const s = deckState(mirror.contentWindow);
     if (s && s.i !== step) { step = s.i; updateStep(s); loadNotes(); syncPreview(s); }
+    if (deadDir !== undefined && step === beforeStep) warnDeadDeck(deadDir);
   }, 260);
 }
 // 미리보기는 항상 현재+1 — 마지막 장까지 갔다 와도 오프셋이 어긋나지 않게 맞춰준다
