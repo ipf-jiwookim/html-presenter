@@ -62,3 +62,21 @@ test('slideAnchors: 같은 내용 두 장은 순번으로 구분된다', () => {
   assert.notEqual(a[0], a[2]);
   assert.ok(a[2].endsWith('#2'));
 });
+
+test('anchorOverlap: 작은 쪽 기준 겹침 비율', () => {
+  assert.equal(PURE.anchorOverlap(['a', 'b', 'c'], ['a', 'b', 'c']), 1);
+  assert.equal(PURE.anchorOverlap(['a', 'b'], ['a', 'b', 'c', 'd']), 1);
+  assert.equal(PURE.anchorOverlap(['a', 'x'], ['a', 'b', 'c', 'd']), 0.5);
+  assert.equal(PURE.anchorOverlap([], ['a']), 0);
+  assert.equal(PURE.anchorOverlap(['a'], []), 0);
+});
+
+test('migrateIndexed: 구 인덱스 노트를 앵커 키로 이관, 앵커 없으면 byIndex 유지', () => {
+  const out = PURE.migrateIndexed({ '0': '첫장', '2': '셋째장', '3': '' }, ['aa', 'bb', 'cc']);
+  assert.deepEqual(out.anchors, { aa: '첫장', cc: '셋째장' });
+  assert.deepEqual(out.byIndex, {});
+
+  const noAnchor = PURE.migrateIndexed({ '1': '노트' }, null);
+  assert.deepEqual(noAnchor.anchors, {});
+  assert.deepEqual(noAnchor.byIndex, { '1': '노트' });
+});
