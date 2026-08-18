@@ -67,10 +67,22 @@ body{
 /* 계측부: 무엇을 세는 숫자인지 라벨로 못박는다 */
 .meter{display:flex;align-items:baseline;gap:7px;flex:none}
 .meter-k{font-family:var(--label);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6c7482}
-#clock{font-family:var(--data);font-size:16px;color:var(--ink-dim);font-variant-numeric:tabular-nums}
 #timer{
   font-family:var(--data);font-size:30px;font-weight:700;line-height:1;
   font-variant-numeric:tabular-nums;min-width:5.2ch;text-align:right;
+}
+/* 목표는 클릭 대상이 눈에 보여야 한다 — 숨은 클릭(경과 숫자)은 아무도 못 찾았다 */
+#goalMeter{padding:5px 11px;border:1px dashed var(--rule);border-radius:8px;background:transparent;align-items:baseline}
+#goalMeter:hover{border-color:var(--next);border-style:solid;background:var(--raised)}
+#goalMeter.set{border-style:solid;border-color:var(--rule)}
+#goalVal{font-family:var(--data);font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;min-width:3ch;text-align:right}
+#goalMeter:not(.set) #goalVal{font-family:var(--ui);font-size:14px;font-weight:600;color:var(--ink-dim);min-width:0}
+#goalMeter.warn #goalVal,#goalMeter.warn .meter-k{color:var(--next)}
+#goalMeter.over #goalVal,#goalMeter.over .meter-k{color:var(--live)}
+#goalInput{width:5ch;font:700 20px var(--data);background:#0f1216;color:var(--ink);border:1px solid var(--next);border-radius:5px;padding:2px 5px;text-align:right}
+@media (prefers-reduced-motion: no-preference){
+  #goalMeter.pulse #goalVal{animation:goalHit .5s ease-out 2}
+  @keyframes goalHit{50%{transform:scale(1.18)}}
 }
 
 /* ── 버튼 ── */
@@ -136,11 +148,17 @@ main{
 
 /* ── 큐 시트(메모) ── */
 .cue{display:flex;flex-direction:column;flex:1;min-height:0;border-top:1px solid var(--rule)}
-.cue-head{display:flex;align-items:baseline;gap:10px;padding:10px 14px 6px}
+.cue-head{display:flex;align-items:center;gap:8px;padding:10px 14px 6px;flex-wrap:nowrap;white-space:nowrap}
 .cue-head h2{margin:0;font-family:var(--label);font-size:14px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--ink)}
 #noteFor{font-family:var(--data);font-size:12.5px;color:var(--next);font-variant-numeric:tabular-nums}
 #savedTag{margin-left:auto;font-size:12px;color:var(--ok);opacity:0;transition:opacity .25s ease}
 #savedTag.show{opacity:1}
+.cue-head button{padding:4px 9px;font-size:12.5px}
+/* "A− / A+" 로는 무슨 버튼인지 아무도 못 알아봤다 — 무엇을 조절하는지 말로 쓴다 */
+.fontgrp{display:flex;align-items:center;gap:4px;margin-left:auto;flex:none}
+.fontgrp .label{font-size:11px;letter-spacing:.1em;white-space:nowrap}
+#savedTag{margin-left:0;flex:none}
+.cue-head h2,.cue-head #noteFor{flex:none}
 #note{
   flex:1;min-height:110px;resize:none;margin:0 14px;padding:12px;
   background:#12151a;color:var(--ink);border:1px solid var(--rule);border-radius:8px;
@@ -153,6 +171,13 @@ main{
   content:'다음 페이지 메모';display:block;
   font-family:var(--label);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--next);margin-bottom:3px;
 }
+#orphanBox{margin:0 14px 14px;border:1px solid var(--rule);border-radius:8px;background:#12151a}
+#orphanSum{padding:9px 12px;cursor:pointer;font-family:var(--label);font-size:12.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--next)}
+.orphan{padding:10px 12px;border-top:1px solid var(--rule);display:flex;flex-direction:column;gap:7px}
+.orphan .hint{font-size:11.5px;color:#6c7482}
+.orphan .body{font-size:13px;line-height:1.6;white-space:pre-wrap;max-height:4.5em;overflow:auto}
+.orphan .row{display:flex;gap:7px}
+.orphan button{padding:5px 10px;font-size:12.5px}
 
 /* ── 하단 트랜스포트 ── */
 .transport{
@@ -203,12 +228,14 @@ input[type=file]{display:none}
   <span id="posChip" aria-live="polite">— / —</span>
   <span id="audStatus" aria-live="polite">청중 화면 없음</span>
   <div class="spacer"></div>
-  <span class="meter" title="지금 시각">
-    <span class="meter-k">현재 시각</span><time id="clock"></time>
-  </span>
   <span class="meter" title="발표를 시작한 뒤 흐른 시간">
-    <span class="meter-k">경과</span><span id="timer" aria-label="경과 시간">00:00</span>
+    <span class="meter-k">경과</span><span id="timer">00:00</span>
   </span>
+  <button type="button" id="goalMeter" class="meter"
+    title="발표에 배정된 시간(분)을 넣으면 남은 시간이 표시됩니다. 비우고 Enter 를 누르면 해제됩니다."
+    aria-label="발표 배정 시간 설정">
+    <span class="meter-k" id="goalLabel">목표</span><span id="goalVal">설정</span>
+  </button>
   <button id="timerBtn" class="icon-btn" aria-label="타이머 시작 또는 일시정지">▶</button>
   <button id="resetBtn" class="icon-btn" aria-label="타이머 리셋">↺</button>
   <button id="openAud" class="primary">청중 화면 열기</button>
@@ -224,9 +251,10 @@ input[type=file]{display:none}
   <span class="kicker">Presenter Console</span>
   <h1>HTML 발표 자료를 여기에 놓으세요</h1>
   <p>완성된 슬라이드 HTML 파일 하나를 끌어다 놓으면, 청중 화면과 분리된 발표자 콘솔이
-     열립니다. 현재·다음 화면, 페이지별 메모, 경과 타이머가 함께 붙습니다.</p>
+     열립니다. 현재·다음 화면, 페이지별 메모, 경과 타이머가 함께 붙습니다.
+     내보낸 노트(.md)를 놓으면 메모를 다시 불러옵니다.</p>
   <button id="pickBtn" class="primary">파일 선택</button>
-  <input type="file" id="fileInput" accept=".html,.htm,text/html">
+  <input type="file" id="fileInput" accept=".html,.htm,.md,text/html,text/markdown">
   <button id="resumeBtn" hidden></button>
   <p class="fine">파일은 이 브라우저 안에서만 열립니다. 서버로 올라가지 않고, 인터넷 없이도 동작합니다.</p>
 </div>
@@ -255,10 +283,20 @@ input[type=file]{display:none}
         <h2>큐 시트</h2>
         <span id="noteFor"></span>
         <span id="savedTag" aria-live="polite">저장됨</span>
+        <span class="fontgrp">
+          <span class="label">글씨</span>
+          <button id="fontDown" class="ghost" title="메모 글씨 작게" aria-label="메모 글씨 작게">작게</button>
+          <button id="fontUp" class="ghost" title="메모 글씨 크게" aria-label="메모 글씨 크게">크게</button>
+        </span>
+        <button id="exportBtn" class="ghost">내보내기</button>
       </div>
       <textarea id="note" aria-label="이 페이지 메모" spellcheck="false"
         placeholder="이 페이지에서 할 말을 적어두세요…"></textarea>
       <div id="nextnote"></div>
+      <details id="orphanBox" hidden>
+        <summary id="orphanSum"></summary>
+        <div id="orphanList"></div>
+      </details>
     </section>
   </div>
 </main>
@@ -278,13 +316,167 @@ input[type=file]{display:none}
 
 <script>
 'use strict';
+/* ==== PURE CORE START ==== */
+/* DOM 을 만지지 않는 순수 로직만 둔다. test/core.mjs 가 이 구역을 그대로 읽어 실행하므로
+   여기에 document·window 참조를 넣으면 테스트가 깨진다. */
+
+function fnv1a(str){
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return (h >>> 0).toString(16).padStart(8, '0').slice(-6);
+}
+
+// 숫자를 포함한 토큰은 버린다 — 페이지 카운터(P.07 / 21)나 날짜가 지문에 섞이면
+// 장 수가 바뀔 때 전 슬라이드의 지문이 함께 무효화된다.
+function normTokens(text){
+  return String(text == null ? '' : text)
+    .toLowerCase()
+    .split(/\s+/)
+    .map(t => t.replace(/[^\p{L}\p{N}]+/gu, ''))
+    .filter(t => t && !/\p{N}/u.test(t));
+}
+
+// 슬라이드 텍스트 배열 → 앵커 배열. 첫 등장은 접미사 없이, 같은 지문의 n번째는 `#n`.
+function slideAnchors(texts){
+  const per = (texts || []).map(normTokens);
+  const stop = new Set();
+  // 5장 미만에서는 공통 토큰 제거를 건너뛴다 — 짧은 덱은 본문 단어까지 공통으로 잡혀
+  // 지문이 전멸한다.
+  if (per.length >= 5) {
+    const count = new Map();
+    per.forEach(tokens => new Set(tokens).forEach(t => count.set(t, (count.get(t) || 0) + 1)));
+    const limit = per.length * 0.8;
+    count.forEach((c, t) => { if (c >= limit) stop.add(t); });
+  }
+  const seen = new Map();
+  return per.map(tokens => {
+    const body = tokens.filter(t => !stop.has(t)).join(' ');
+    const base = body ? fnv1a(body) : 'empty';
+    const n = (seen.get(base) || 0) + 1;
+    seen.set(base, n);
+    return n === 1 ? base : `${base}#${n}`;
+  });
+}
+
+// 작은 쪽 집합 기준 — 노트 3개짜리 파일이 21장 덱과 온전히 일치할 수 있어야 한다.
+function anchorOverlap(a, b){
+  const A = new Set(a || []), B = new Set(b || []);
+  if (!A.size || !B.size) return 0;
+  let hit = 0;
+  A.forEach(x => { if (B.has(x)) hit++; });
+  return hit / Math.min(A.size, B.size);
+}
+
+// 구 저장 형식(ptnotes:{deck}:{index}) → 신규 앵커 기반 레코드. 앵커 없으면 byIndex 로 유지.
+function migrateIndexed(oldMap, anchors){
+  const out = { anchors: {}, byIndex: {} };
+  Object.keys(oldMap || {}).forEach(k => {
+    const text = oldMap[k];
+    if (!text) return;
+    const a = anchors && anchors[Number(k)];
+    if (a) out.anchors[a] = text;
+    else out.byIndex[String(Number(k))] = text;
+  });
+  return out;
+}
+
+function sanitizeName(s){
+  const out = String(s == null ? '' : s).replace(/\.html?$/i, '').replace(/[\/\\:*?"<>|]+/g, '_').trim();
+  return out || 'deck';
+}
+function noteFileName(deckName, today){
+  return `${today}_${sanitizeName(deckName)}_노트.md`;
+}
+
+// 사람이 읽을 수 있는 대본 겸 가져오기용 파일. 연결의 근거는 slide 주석뿐이고
+// 페이지 번호는 참고값이다.
+function serializeNotes(o){
+  const L = [];
+  L.push(`# ${o.deckName} — 발표 노트`);
+  L.push(`<!-- html-presenter notes v1 · ${o.total}페이지 · ${o.today} -->`);
+  L.push('<!-- 이 파일은 자유롭게 고쳐도 되지만, slide 주석은 지우지 마세요 —');
+  L.push('     다시 가져올 때 노트가 제자리를 찾는 표시입니다. -->');
+  (o.notes || []).forEach(n => {
+    L.push('');
+    L.push(`## ${n.index + 1} / ${o.total} · "${n.title || '(제목 없음)'}"`);
+    L.push(`<!-- slide: ${n.anchor} -->`);
+    L.push(n.text);
+  });
+  if ((o.orphans || []).length) {
+    L.push('');
+    L.push('## 미배정');
+    o.orphans.forEach(p => {
+      L.push('');
+      L.push(`<!-- unassigned${p.hint ? ': ' + p.hint : ''} -->`);
+      L.push(p.text);
+    });
+  }
+  return L.join('\n') + '\n';
+}
+
+// 섹션 경계는 주석 마커만 신뢰한다 — 사용자가 노트 본문에 ## 를 쓸 수 있기 때문.
+function parseNotes(md){
+  const text = String(md == null ? '' : md);
+  const out = { ok: false, anchors: {}, orphans: [] };
+  if (!/html-presenter notes v1/.test(text)) return out;
+  out.ok = true;
+  // 마커는 반드시 한 줄을 통째로 차지해야 인식한다(앞뒤로 공백만 허용) — 그래야 노트 본문
+  // 중간에 우연히(또는 의도적으로) 같은 문자열이 섞여 있어도 진짜 경계로 오인하지 않는다.
+  const re = /^[ \t]*<!--\s*(?:slide:\s*([A-Za-z0-9#]+)|unassigned(?::\s*([^>]*?))?)\s*-->[ \t]*$/gm;
+  const marks = [];
+  let m;
+  while ((m = re.exec(text))) marks.push({ at: m.index, len: m[0].length, anchor: m[1] || null, hint: (m[2] || '').trim() });
+  marks.forEach((mk, k) => {
+    const to = k + 1 < marks.length ? marks[k + 1].at : text.length;
+    let body = text.slice(mk.at + mk.len, to);
+    // 다음 섹션의 제목 줄은 본문이 아니다. 우리가 만든 형태만 정확히 떼어낸다.
+    body = body.replace(/\n## (?:\d+ \/ \d+ · .*|미배정)[ \t]*\n?\s*$/, '');
+    body = body.replace(/^[ \t]*\n/, '').replace(/\s+$/, '');
+    if (!body) return;
+    if (mk.anchor) out.anchors[mk.anchor] = out.anchors[mk.anchor] ? out.anchors[mk.anchor] + '\n\n' + body : body;
+    else out.orphans.push({ text: body, hint: mk.hint });
+  });
+  return out;
+}
+
+function fmtClock(totalSec){
+  const s = Math.max(0, Math.floor(totalSec));
+  const h = Math.floor(s / 3600);
+  const m = String(Math.floor(s / 60) % 60).padStart(2, '0');
+  const ss = String(s % 60).padStart(2, '0');
+  return h ? `${h}:${m}:${ss}` : `${m}:${ss}`;
+}
+function validateGoal(raw){
+  const s = String(raw == null ? '' : raw).trim();
+  if (!s) return { ok: 'clear' };
+  if (!/^\d{1,3}$/.test(s)) return { ok: false };
+  const min = Number(s);
+  if (min < 1 || min > 600) return { ok: false };
+  return { ok: true, min };
+}
+// 초과는 음수(−02:20)로 쓰지 않는다 — 이중 부정이라 순간적으로 안 읽힌다.
+function goalDisplay(goalMin, accMs){
+  const left = goalMin * 60 - Math.floor(accMs / 1000);
+  if (left < 0) return { label: '초과', text: fmtClock(-left), state: 'over' };
+  return { label: '남은', text: fmtClock(left), state: left <= 300 ? 'warn' : 'ok' };
+}
+
+const PURE = { fnv1a, normTokens, slideAnchors, anchorOverlap, migrateIndexed, sanitizeName, noteFileName, serializeNotes, parseNotes, fmtClock, validateGoal, goalDisplay };
+/* ==== PURE CORE END ==== */
+if (typeof window !== 'undefined') window.__pt = PURE;   // 브라우저 검증용 훅
+
 const $ = s => document.querySelector(s);
 let deckHTML = '', deckName = '', step = 0, audience = null, started = false;
 let mirror = $('#mirror'), preview = $('#preview');   // 덱 로드마다 새 iframe 으로 교체된다
 
 /* ---------- 덱 로드 ---------- */
 function loadDeck(text, name){
-  deckHTML = text; deckName = name || 'deck.html'; step = 0;
+  $('#notice').hidden = true; restoreNoticeBtn();   // 이전 덱의 알림·버튼 상태가 새 덱으로 새지 않게 초기화
+  if (deckName) { clearTimeout(saveT); saveRecNow(); }   // 덱을 바꾸기 전에 이전 덱의 대기 중인 저장을 flush
+  deckHTML = text; deckName = name || 'deck.html'; step = 0; deadWarned = false;
   $('#deckname').textContent = deckName;
   document.title = deckName + ' — 발표자 콘솔';
   $('#dropzone').hidden = true;
@@ -294,10 +486,21 @@ function loadDeck(text, name){
   // 청중 창은 새 Window 가 필요하다(아래 freshFrame 주석 참고). 닫고 다시 열도록 안내한다.
   if (audience && !audience.closed) {
     audience.close(); audience = null;
-    showNotice('발표 자료가 바뀌었습니다. 청중 화면을 다시 열어주세요.');
+    showNotice('발표 자료가 바뀌었습니다. 청중 화면을 다시 열어주세요.', true);
   }
+  loadRec();
+  retryMigration();
   updateStep(); loadNotes();
-  setTimeout(() => updateStep(), 1000);   // 덱이 첫 장을 늦게 표시하는 경우
+  setTimeout(() => {
+    updateStep();
+    // 승격으로 큐 시트 내용이 바뀔 수 있다(밀려난 노트가 미배정함으로 감). 화면을 사실과 맞춘다.
+    if (retryMigration()) loadNotes();
+    resettleAnchors();
+    if (!Object.keys(rec.anchors).length && !Object.keys(rec.byIndex).length) offerRecovery();
+  }, 1000);   // 덱이 첫 장을 늦게 표시하는 경우
+  setTimeout(resettleAnchors, 2500);   // 더 느리게 정착하는 덱을 위한 두 번째 체크포인트
+  if (/(?:<img[^>]+src|url\()\s*=?\s*["']?(?!https?:|data:|\/\/|#)[\w.][^"')>]*/i.test(deckHTML))
+    flash('이미지가 별도 파일로 분리된 자료입니다 — 단일 HTML로 합쳐야 이미지가 표시됩니다.');
   reqWakeLock();
   store.set('ptlast', JSON.stringify({ name: deckName, html: deckHTML }));
 }
@@ -305,8 +508,10 @@ window.__ptLoad = loadDeck; // 프로그래매틱 로드용(테스트/확장)
 
 function handleFile(file){
   if (!file) return;
+  const isMd = /\.md$/i.test(file.name);
+  if (isMd && !deckHTML) { flash('발표 자료를 먼저 열어주세요.'); return; }
   const r = new FileReader();
-  r.onload = () => loadDeck(r.result, file.name);
+  r.onload = () => isMd ? importNotes(r.result) : loadDeck(r.result, file.name);
   r.readAsText(file);
 }
 $('#pickBtn').onclick = () => $('#fileInput').click();
@@ -383,7 +588,7 @@ function deckState(win){
       if (els.length < 2) continue;
       for (const re of [ACT_STRONG, ACT_LOOSE]) {
         const i = els.findIndex(el => re.test(el.getAttribute('class') || ''));
-        if (i >= 0) return { i, n: els.length };
+        if (i >= 0) return { i, n: els.length, els };
       }
     }
   } catch (_) {}
@@ -408,7 +613,7 @@ function nav(dir, includeAudience = true){
   sendKey(mw, dir);
   const after = deckState(mw);
   const moved = (before && after) ? after.i !== before.i : sig(mw) !== beforeSig;
-  if (!moved) { endFlash(dir); settle(); return; }
+  if (!moved) { endFlash(dir); settle(dir); return; }
   sendKey(preview.contentWindow, dir);
   syncPreview(after);
   step = after ? after.i : Math.max(0, step + dir);
@@ -417,11 +622,13 @@ function nav(dir, includeAudience = true){
   settle();
 }
 // 늦게 반응하는 덱(애니메이션 후 클래스 변경)을 위한 뒤늦은 보정
-function settle(){
+function settle(deadDir){
   clearTimeout(settle._t);
+  const beforeStep = step;
   settle._t = setTimeout(() => {
     const s = deckState(mirror.contentWindow);
     if (s && s.i !== step) { step = s.i; updateStep(s); loadNotes(); syncPreview(s); }
+    if (deadDir !== undefined && step === beforeStep) warnDeadDeck(deadDir);
   }, 260);
 }
 // 미리보기는 항상 현재+1 — 마지막 장까지 갔다 와도 오프셋이 어긋나지 않게 맞춰준다
@@ -446,6 +653,16 @@ function updateStep(st){
 }
 function endFlash(dir){
   flash(dir > 0 ? '마지막 슬라이드입니다.' : '첫 슬라이드입니다.');
+}
+let deadWarned = false;
+// 첫 [다음]이 먹지 않으면 안내한다. 구조 감지 여부는 조건에 넣지 않는다 —
+// 클릭 전용 덱은 .slide 구조는 있으면서 키보드만 안 먹는 경우가 가장 흔하다.
+function warnDeadDeck(dir){
+  if (deadWarned || dir < 0 || step !== 0) return;
+  const s = deckState(mirror.contentWindow);
+  if (s && s.n <= 1) return;               // 한 장짜리는 넘길 곳이 없다
+  deadWarned = true;
+  showNotice('이 자료는 키보드 넘김에 반응하지 않는 것 같습니다. 자료를 만든 AI에게 "← → 방향키로 슬라이드가 넘어가게 해줘"라고 요청해 보세요.');
 }
 function flash(msg){
   const el = $('#flash');
@@ -473,13 +690,18 @@ $('#audPrev').onclick = function(){ this.blur(); trimAudience(-1); };
 
 window.addEventListener('keydown', e => {
   const t = e.target.tagName;
-  if (t === 'TEXTAREA' || t === 'INPUT' || !deckHTML) return;
+  // 버튼에 포커스가 있을 때 Space 는 그 버튼을 누르는 동작이다 — 슬라이드까지 같이 넘기면 안 된다
+  if (t === 'TEXTAREA' || t === 'INPUT' || t === 'BUTTON' || t === 'SELECT' || !deckHTML) return;
   if (['ArrowRight','PageDown',' '].includes(e.key)) { e.preventDefault(); nav(1); }
   else if (['ArrowLeft','PageUp'].includes(e.key)) { e.preventDefault(); nav(-1); }
 });
 
 /* ---------- 청중 창 ---------- */
-function showNotice(msg){ $('#noticeMsg').textContent = msg; $('#notice').hidden = false; }
+function showNotice(msg, withAudienceBtn){
+  $('#noticeMsg').textContent = msg;
+  $('#noticeBtn').hidden = !withAudienceBtn;
+  $('#notice').hidden = false;
+}
 function openAudience(){
   if (audience && !audience.closed) { audience.focus(); return; }  // 이미 열려 있으면 다시 그리지 않는다
   // 크기 옵션을 줘야 Chrome 이 "새 탭" 이 아니라 독립 창으로 연다 —
@@ -488,7 +710,7 @@ function openAudience(){
   audience = window.open('', 'pt_audience',
     `popup=yes,width=${w},height=${Math.round(w * 9 / 16)},left=60,top=60`);
   if (!audience) {
-    showNotice('팝업이 차단되었습니다. 주소창 오른쪽 팝업 아이콘에서 “항상 허용”을 선택한 뒤 다시 열어주세요.');
+    showNotice('팝업이 차단되었습니다. 주소창 오른쪽 팝업 아이콘에서 “항상 허용”을 선택한 뒤 다시 열어주세요.', true);
     return;
   }
   $('#notice').hidden = true;
@@ -498,7 +720,7 @@ function openAudience(){
   audience.focus();
 }
 $('#openAud').onclick = function(){ this.blur(); openAudience(); };
-$('#noticeBtn').onclick = function(){ this.blur(); openAudience(); };
+restoreNoticeBtn();
 
 function hookAudience(){
   // 청중 창에서 직접 키를 누르면 발표자 콘솔도 따라오게 역방향 동기화
@@ -579,17 +801,12 @@ setInterval(() => {
 
 /* ---------- 타이머 · 시계 ---------- */
 let acc = 0, runT = null;
-function fmt(ms){
-  const s = Math.floor(ms / 1000), h = Math.floor(s / 3600),
-        m = String(Math.floor(s / 60) % 60).padStart(2, '0'),
-        ss = String(s % 60).padStart(2, '0');
-  return h ? `${h}:${m}:${ss}` : `${m}:${ss}`;
-}
+function fmt(ms){ return fmtClock(Math.floor(ms / 1000)); }
 function startTimer(){
   started = true;
   if (runT) return;
   const t0 = Date.now() - acc;
-  runT = setInterval(() => { acc = Date.now() - t0; $('#timer').textContent = fmt(acc); }, 250);
+  runT = setInterval(() => { acc = Date.now() - t0; $('#timer').textContent = fmt(acc); renderGoal(); }, 250);
   $('#timerBtn').textContent = '⏸';
   $('#timerBtn').setAttribute('aria-label', '타이머 일시정지');
 }
@@ -599,30 +816,403 @@ function pauseTimer(){
   $('#timerBtn').setAttribute('aria-label', '타이머 시작');
 }
 $('#timerBtn').onclick = function(){ this.blur(); runT ? pauseTimer() : startTimer(); };
-$('#resetBtn').onclick = function(){ this.blur(); pauseTimer(); acc = 0; started = false; $('#timer').textContent = '00:00'; flash('타이머를 리셋했습니다.'); };
-const hhmm = new Intl.DateTimeFormat('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
-setInterval(() => { $('#clock').textContent = hhmm.format(new Date()); }, 1000);
+$('#resetBtn').onclick = function(){ this.blur(); pauseTimer(); acc = 0; started = false; goalHit = false; $('#timer').textContent = '00:00'; renderGoal(); flash('타이머를 리셋했습니다.'); };
 
-/* ---------- 페이지별 메모 ----------
-   localStorage 가 막힌 환경(샌드박스·시크릿 모드)에서도 발표 중에는 메모가 살아있도록
-   메모리 폴백을 둔다. 저장 실패로 콘솔 전체가 멈추는 일은 없어야 한다. */
+let goalHit = false;
+function renderGoal(){
+  const box = $('#goalMeter');
+  if (!rec.goalMin) {
+    // 숨기지 않는다 — 목표를 설정할 수 있다는 사실 자체가 보여야 한다
+    box.classList.remove('set', 'warn', 'over');
+    $('#goalLabel').textContent = '목표';
+    $('#goalVal').textContent = '설정';
+    return;
+  }
+  const d = goalDisplay(rec.goalMin, acc);
+  box.classList.add('set');
+  $('#goalLabel').textContent = d.label;
+  $('#goalVal').textContent = d.text;
+  box.classList.toggle('warn', d.state === 'warn');
+  box.classList.toggle('over', d.state === 'over');
+  // 알림은 도달 순간 1회만 — 계속 깜빡이면 그게 더 방해다. 소리는 쓰지 않는다
+  // (노트북 오디오가 강의장 스피커에 연결된 경우 청중에게 들린다).
+  if (d.state === 'over' && !goalHit) {
+    goalHit = true;
+    flash('목표 시간에 도달했습니다.');
+    box.classList.add('pulse');
+    setTimeout(() => box.classList.remove('pulse'), 1200);
+  }
+}
+function editGoal(){
+  if ($('#goalInput')) return;
+  const holder = $('#goalMeter').parentNode;
+  const input = document.createElement('input');
+  input.id = 'goalInput';
+  input.type = 'text';
+  input.inputMode = 'numeric';
+  input.setAttribute('aria-label', '발표 배정 시간(분). 비우면 해제');
+  input.value = rec.goalMin || '';
+  input.placeholder = '분';
+  holder.append(input);
+  input.focus(); input.select();
+  const done = commit => {
+    if (commit) {
+      const v = validateGoal(input.value);
+      if (v.ok === true) { rec.goalMin = v.min; goalHit = false; saveRec(); flash(`목표 ${v.min}분으로 설정했습니다.`); }
+      else if (v.ok === 'clear') { delete rec.goalMin; goalHit = false; saveRec(); flash('목표 시간을 해제했습니다.'); }
+      else flash('1~600 사이의 분 단위 숫자를 입력해 주세요.');
+    }
+    input.remove(); renderGoal();
+  };
+  input.onkeydown = e => {
+    if (e.key === 'Enter') { e.preventDefault(); done(true); }
+    else if (e.key === 'Escape') { e.preventDefault(); done(false); }
+  };
+  input.onblur = () => done(false);
+}
+$('#goalMeter').onclick = function(){ this.blur(); editGoal(); };
+
+
+/* ---------- 노트 레코드 ----------
+   덱당 키 1개(ptnotes2:{deckName})에 앵커 노트·인덱스 폴백·미배정함·설정을 모아 둔다. */
 const mem = {};
 const store = {
   get(k){ try { const v = localStorage.getItem(k); return v === null ? (k in mem ? mem[k] : null) : v; } catch (_) { return k in mem ? mem[k] : null; } },
-  set(k, v){ mem[k] = v; try { localStorage.setItem(k, v); } catch (_) {} }
+  set(k, v){ mem[k] = v; try { localStorage.setItem(k, v); return true; } catch (_) { return false; } },
+  keys(){ try { return Object.keys(localStorage); } catch (_) { return Object.keys(mem); } }
 };
-const noteKey = n => `ptnotes:${deckName}:${n}`;
+
+let rec = blankRec(), warnedFull = false, saveT = null;
+function blankRec(){ return { anchors: {}, byIndex: {}, orphans: [], fontSize: 16 }; }
+const recKey = name => `ptnotes2:${name || deckName}`;
+
+function saveRecNow(){
+  if (!store.set(recKey(), JSON.stringify(rec)) && !warnedFull) {
+    warnedFull = true;
+    showNotice('브라우저 저장 공간이 꽉 차 메모를 영구 저장할 수 없습니다. 노트를 내보내 두세요.');
+  }
+}
+function saveRec(){ clearTimeout(saveT); saveT = setTimeout(saveRecNow, 300); }
+
+// 앵커는 미리 계산하지 않는다 — 덱 스크립트가 늦게 초기화되면 빈 지문이 캐시된다.
+let anchorCache = null;
+function deckAnchors(){
+  try {
+    const s = deckState(mirror.contentWindow);
+    if (!s || !s.els) return null;
+    const key = deckName + '|' + s.n;
+    if (anchorCache && anchorCache.key === key) return anchorCache.list;
+    const texts = s.els.map(el => el.textContent || '');
+    if (!texts.some(t => t.trim())) return null;   // 아직 초기화 전 — 캐시하지 않고 재시도
+    const list = slideAnchors(texts);
+    anchorCache = { key, list };
+    return list;
+  } catch (_) { return null; }
+}
+function anchorFor(i){
+  const list = deckAnchors();
+  return (list && list[i]) || null;
+}
+function noteGet(i){
+  const a = anchorFor(i);
+  if (a && rec.anchors[a] != null) return rec.anchors[a];
+  return rec.byIndex[String(i)] || '';
+}
+function noteSet(i, text){
+  const a = anchorFor(i);
+  if (a) { rec.anchors[a] = text; delete rec.byIndex[String(i)]; }
+  else rec.byIndex[String(i)] = text;
+  saveRec();
+}
+
+function loadRec(){
+  anchorCache = null;
+  const raw = store.get(recKey());
+  if (raw) { try { rec = Object.assign(blankRec(), JSON.parse(raw)); return; } catch (_) {} }
+  rec = blankRec();
+  // 구키(ptnotes:{deckName}:{n}) 마이그레이션 — 구키는 롤백용으로 남긴다
+  const old = {};
+  store.keys().forEach(k => {
+    const p = k.indexOf(`ptnotes:${deckName}:`);
+    if (p === 0) old[k.slice(`ptnotes:${deckName}:`.length)] = store.get(k);
+  });
+  if (Object.keys(old).length) {
+    const moved = migrateIndexed(old, deckAnchors());
+    rec.anchors = moved.anchors; rec.byIndex = moved.byIndex;
+    saveRecNow();
+  }
+  if (!Object.keys(rec.anchors).length && !Object.keys(rec.byIndex).length) offerRecovery();
+}
+
+// 파일명만 바뀐 경우(발표자료.html → 발표자료_최종.html) 앵커 겹침으로 이전 노트를 찾아 제안한다.
+// 'empty'/'empty#n' 앵커(빈 슬라이드)는 겹침 계산에서 제외한다 — 그렇지 않으면 서로 무관한
+// 덱이 우연히 같은 개수의 빈 슬라이드를 갖고 있다는 이유만으로 100% 일치로 오판될 수 있다.
+function offerRecovery(){
+  const mine = deckAnchors();
+  if (!mine) return;
+  const mineReal = mine.filter(a => !a.startsWith('empty'));
+  if (!mineReal.length) return;
+  let best = null;
+  store.keys().forEach(k => {
+    if (k.indexOf('ptnotes2:') !== 0 || k === recKey() || k.endsWith(':undo')) return;
+    let other;
+    try { other = JSON.parse(store.get(k)); } catch (_) { return; }
+    const keys = Object.keys((other && other.anchors) || {}).filter(a => !a.startsWith('empty'));
+    if (!keys.length) return;
+    const score = anchorOverlap(keys, mineReal);
+    if (score >= 0.4 && (!best || score > best.score)) best = { key: k, score, count: keys.length, rec: other };
+  });
+  if (!best) return;
+  const from = best.key.slice('ptnotes2:'.length);
+  showNotice(`「${from}」에 쓴 노트 ${best.count}개가 있습니다. 이 자료의 것으로 보입니다.`);
+  const btn = $('#noticeBtn');
+  btn.hidden = false;
+  btn.textContent = '불러오기';
+  btn.onclick = () => {
+    // 배너를 띄운 시점엔 비어 있었어도 클릭은 한참 뒤에 올 수 있다(그 사이 쓴 노트).
+    // 미배정함도 비어 있는지는 애초에 검사하지 않는다. 그래서 가져오기와 같은 계약으로
+    // 되돌리기 스냅샷을 남기고, 미배정함은 교체하지 않고 이어 붙인다.
+    store.set(recKey() + ':undo', JSON.stringify(rec));
+    const keptOrphans = (rec.orphans || []).slice();
+    rec.anchors = Object.assign({}, best.rec.anchors);
+    rec.byIndex = Object.assign({}, best.rec.byIndex || {});
+    rec.orphans = keptOrphans.concat(best.rec.orphans || []);
+    saveRecNow(); loadNotes(); refreshExportBtn();
+    $('#notice').hidden = true;
+    restoreNoticeBtn();
+    flash(`노트 ${best.count}개를 불러왔습니다.`);
+    showUndo();
+  };
+}
+// 알림 바 버튼을 기본(청중 화면 열기)으로 되돌린다
+function restoreNoticeBtn(){
+  const btn = $('#noticeBtn');
+  btn.textContent = '청중 화면 열기';
+  btn.onclick = function(){ this.blur(); openAudience(); };
+}
+
+// 인덱스로만 남아있는 구노트를 앵커로 승격한다. 플래그 없이 매번 시도해도 안전하다 —
+// 승격할 게 없거나 덱이 아직 준비 안 됐으면 그냥 아무 일도 안 한다. loadRec() 직후와
+// 1초 지연 시점 양쪽에서 불러, 이전에 승격 기회를 놓친 기록도 다음 로드에서 저절로 낫는다.
+function retryMigration(){
+  const anchors = deckAnchors();
+  if (!anchors) return;
+  let changed = false;
+  Object.keys(rec.byIndex).forEach(k => {
+    const a = anchors[Number(k)];
+    if (!a) return;
+    const incoming = rec.byIndex[k];
+    if (rec.anchors[a] == null) { rec.anchors[a] = incoming; }
+    else if (rec.anchors[a] !== incoming) {
+      // 앵커 자리에 이미 다른 노트가 있으면 덮지 않고 미배정함으로 옮긴다
+      rec.orphans = rec.orphans || [];
+      rec.orphans.push({ text: incoming, hint: `${Number(k) + 1}번째 장 · 앵커 승격 중 밀려난 노트` });
+    }
+    delete rec.byIndex[k];
+    changed = true;
+  });
+  if (changed) saveRecNow();
+  return changed;
+}
+
+// 덱 텍스트가 초기 렌더 이후에도 계속 바뀌는 경우(타이핑 애니메이션·지연 렌더링 등),
+// 처음 성공한 계산이 아직 안정되지 않은 상태를 캐시해버릴 수 있다. 강제로 다시 계산해
+// 달라졌으면, 그 사이 옛 앵커에 저장된 노트를 새 앵커로 옮겨 붙인다 — retryMigration과
+// 같은 자가치유 패턴. 옛 앵커에 노트가 없었으면(가장 흔한 경우) 아무 일도 안 한다.
+function resettleAnchors(){
+  const before = anchorCache;
+  if (!before) return;
+  anchorCache = null;                 // 강제로 재계산
+  const after = deckAnchors();
+  if (!after || before.list.length !== after.length) return;
+  let changed = false;
+  before.list.forEach((oldA, i) => {
+    const newA = after[i];
+    if (newA && oldA !== newA && rec.anchors[oldA] != null && rec.anchors[newA] == null) {
+      rec.anchors[newA] = rec.anchors[oldA];
+      delete rec.anchors[oldA];
+      changed = true;
+    }
+  });
+  if (changed) saveRecNow();
+}
+
 $('#note').oninput = () => {
-  store.set(noteKey(step), $('#note').value);
+  noteSet(step, $('#note').value);
+  refreshExportBtn();
   const tag = $('#savedTag');
   tag.classList.add('show');
   clearTimeout($('#note')._t);
   $('#note')._t = setTimeout(() => tag.classList.remove('show'), 1200);
 };
 function loadNotes(){
-  $('#note').value = store.get(noteKey(step)) || '';
-  $('#nextnote').textContent = store.get(noteKey(step + 1)) || '';
+  $('#note').value = noteGet(step);
+  $('#nextnote').textContent = noteGet(step + 1);
   $('#savedTag').classList.remove('show');
+  applyFontSize();
+  renderOrphans();
+  refreshExportBtn();
+  renderGoal();
+}
+const FONT_STEPS = [13, 16, 20, 24, 28];
+function applyFontSize(){
+  const px = FONT_STEPS.includes(rec.fontSize) ? rec.fontSize : 16;
+  rec.fontSize = px;
+  $('#note').style.fontSize = px + 'px';
+  $('#nextnote').style.fontSize = Math.max(12, px - 3) + 'px';
+  const at = FONT_STEPS.indexOf(px);
+  $('#fontDown').disabled = at === 0;                      // 끝에서 눌러도 무반응인 상태를 만들지 않는다
+  $('#fontUp').disabled = at === FONT_STEPS.length - 1;
+}
+function bumpFont(dir){
+  const at = FONT_STEPS.indexOf(rec.fontSize);
+  const next = FONT_STEPS[Math.min(FONT_STEPS.length - 1, Math.max(0, at + dir))];
+  rec.fontSize = next; applyFontSize(); saveRec();
+}
+$('#fontDown').onclick = function(){ this.blur(); bumpFont(-1); };
+$('#fontUp').onclick = function(){ this.blur(); bumpFont(1); };
+
+function slideTitle(i){
+  try {
+    const s = deckState(mirror.contentWindow);
+    const el = s && s.els && s.els[i];
+    if (!el) return '';
+    const line = (el.innerText || el.textContent || '').split('\n').map(x => x.trim()).find(x => x);
+    return line ? line.slice(0, 40) : '';
+  } catch (_) { return ''; }
+}
+function exportNotes(){
+  const list = deckAnchors();
+  const total = (deckState(mirror.contentWindow) || {}).n || 0;
+  const notes = [];
+  if (list) list.forEach((a, i) => { if (rec.anchors[a]) notes.push({ anchor: a, index: i, title: slideTitle(i), text: rec.anchors[a] }); });
+  // 인덱스 기반 노트는 내용에 앵커를 걸 수 없으므로 미배정으로 내보낸다 —
+  // index-N 같은 가짜 앵커는 파서가 되읽지 못해 왕복에서 조용히 사라진다.
+  const orphansOut = (rec.orphans || []).slice();
+  Object.keys(rec.byIndex).forEach(k => {
+    const i = Number(k);
+    if (rec.byIndex[k]) orphansOut.push({ text: rec.byIndex[k], hint: `${i + 1}번째 장 (위치 기반 메모)` });
+  });
+  // 현재 덱에 없는 앵커에 남아있는 노트도 미배정으로 함께 내보낸다 — 그렇지 않으면
+  // 큐 시트·미배정함·내보내기 어디에도 나타나지 않아 사실상 복구 불가가 된다.
+  if (list) {
+    const inDeck = new Set(list);
+    Object.keys(rec.anchors).forEach(a => {
+      if (!inDeck.has(a) && rec.anchors[a]) orphansOut.push({ text: rec.anchors[a], hint: '이 자료에 없는 위치의 메모' });
+    });
+  }
+  notes.sort((a, b) => a.index - b.index);
+  const md = serializeNotes({
+    deckName, total, today: new Date().toISOString().slice(0, 10),
+    notes, orphans: orphansOut
+  });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([md], { type: 'text/markdown;charset=utf-8' }));
+  a.download = noteFileName(deckName, new Date().toISOString().slice(0, 10));
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  flash(`노트 ${notes.length + orphansOut.length}개를 내보냈습니다.`);
+}
+$('#exportBtn').onclick = function(){ this.blur(); exportNotes(); };
+function refreshExportBtn(){
+  const has = Object.keys(rec.anchors).length || Object.keys(rec.byIndex).length || (rec.orphans || []).length;
+  $('#exportBtn').disabled = !has;
+  $('#exportBtn').title = has ? '' : '내보낼 메모가 없습니다';
+}
+function renderOrphans(){
+  const box = $('#orphanBox'), list = $('#orphanList');
+  const items = rec.orphans || [];
+  box.hidden = !items.length;
+  if (!items.length) { list.textContent = ''; return; }
+  $('#orphanSum').textContent = `자리를 못 찾은 노트 ${items.length}개`;
+  list.textContent = '';
+  items.forEach((o, idx) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'orphan';
+    const hint = document.createElement('div');
+    hint.className = 'hint';
+    hint.textContent = o.hint ? `원래 위치: ${o.hint}` : '원래 위치 정보 없음';
+    const body = document.createElement('div');
+    body.className = 'body';
+    body.textContent = o.text;
+    const row = document.createElement('div');
+    row.className = 'row';
+    const put = document.createElement('button');
+    put.textContent = '이 페이지에 붙이기';
+    put.onclick = () => {
+      const cur = noteGet(step);
+      noteSet(step, cur ? cur + '\n\n' + o.text : o.text);   // 덮지 않고 이어 붙인다
+      rec.orphans.splice(idx, 1);
+      saveRecNow(); loadNotes(); refreshExportBtn();
+      flash(`${step + 1}페이지에 붙였습니다.`);
+    };
+    const del = document.createElement('button');
+    del.textContent = '삭제';
+    del.onclick = () => { rec.orphans.splice(idx, 1); saveRecNow(); renderOrphans(); refreshExportBtn(); };
+    row.append(put, del);
+    wrap.append(hint, body, row);
+    list.append(wrap);
+  });
+}
+
+// 어느 선택지를 골라도 노트가 사라지지 않는다 — 밀려난 쪽은 미배정함으로 간다.
+function importNotes(text){
+  const parsed = parseNotes(text);
+  if (!parsed.ok) { flash('이 파일은 노트 내보내기 파일이 아닙니다.'); return; }
+  const mine = deckAnchors();
+  const fileKeys = Object.keys(parsed.anchors);
+  // Task 9 와 동일하게 empty 계열 앵커(빈 슬라이드)는 겹침 판단에서 제외한다 —
+  // 그렇지 않으면 서로 무관한 파일이 같은 개수의 빈 슬라이드를 가졌다는 이유만으로
+  // "이 자료의 것"이라고 오판될 수 있다.
+  const fileReal = fileKeys.filter(a => !a.startsWith('empty'));
+  const mineReal = mine ? mine.filter(a => !a.startsWith('empty')) : null;
+  if (mineReal && fileReal.length && anchorOverlap(fileReal, mineReal) < 0.2 &&
+      !confirm('다른 자료에서 내보낸 노트로 보입니다. 계속할까요?')) return;
+
+  const clash = fileKeys.filter(a => rec.anchors[a] && rec.anchors[a] !== parsed.anchors[a]);
+  let replace = true;
+  if (clash.length) {
+    replace = confirm(`${clash.length}개 페이지에 이미 다른 노트가 있습니다.\n\n확인 = 파일 것으로 교체(기존 노트는 미배정함으로 이동)\n취소 = 기존 유지(파일 노트를 미배정함으로 이동)`);
+  }
+
+  store.set(recKey() + ':undo', JSON.stringify(rec));   // 되돌리기 스냅샷
+  const orphans = (rec.orphans || []).slice();
+  let placed = 0;
+  fileKeys.forEach(a => {
+    const incoming = parsed.anchors[a], existing = rec.anchors[a];
+    const idx = mine ? mine.indexOf(a) : -1;
+    const hint = idx >= 0 ? `${idx + 1}번째 장` : '';
+    if (existing && existing !== incoming) {
+      if (replace) { orphans.push({ text: existing, hint: (hint || '이전') + ' · 교체되기 전 노트' }); rec.anchors[a] = incoming; placed++; }
+      else orphans.push({ text: incoming, hint: (hint || '가져온 노트') + ' · 기존 유지로 밀려난 노트' });
+    } else if (mine && idx < 0) {
+      orphans.push({ text: incoming, hint: '이 자료에서 위치를 찾지 못함' });
+    } else { rec.anchors[a] = incoming; placed++; }
+  });
+  parsed.orphans.forEach(o => orphans.push(o));
+  rec.orphans = orphans;
+  saveRecNow(); loadNotes(); refreshExportBtn();
+
+  const left = rec.orphans.length;
+  flash(`노트 ${placed}개 연결${left ? ` · ${left}개는 미배정 노트함` : ''}.`);
+  showUndo();
+}
+function showUndo(){
+  const el = $('#flash');
+  clearTimeout(flash._t);  // 직전 flash()가 예약한 2.2초 자동 지우기가 이 버튼까지 지우지 못하게 취소
+  const btn = document.createElement('button');
+  btn.textContent = '가져오기 되돌리기';
+  btn.className = 'ghost';
+  btn.style.marginLeft = '8px';
+  btn.onclick = () => {
+    const snap = store.get(recKey() + ':undo');
+    if (!snap) return;
+    try { rec = Object.assign(blankRec(), JSON.parse(snap)); } catch (_) { return; }
+    saveRecNow(); loadNotes(); refreshExportBtn();
+    el.textContent = '가져오기를 되돌렸습니다.';
+  };
+  el.append(btn);
+  setTimeout(() => { if (btn.isConnected) btn.remove(); }, 30000);
 }
 
 /* ---------- 화면 꺼짐 방지 ---------- */
