@@ -135,17 +135,22 @@ main{
 
 /* ── 큐 시트(메모) ── */
 .cue{display:flex;flex-direction:column;flex:1;min-height:0;border-top:1px solid var(--rule)}
-.cue-head{display:flex;align-items:center;gap:8px;padding:10px 14px 6px;flex-wrap:nowrap;white-space:nowrap}
+/* 제목줄과 조작줄을 분리한다 — 한 줄에 몰아넣었더니 노트 지도가 길어질 때
+   [노트 불러오기]·[노트 저장] 이 화면 밖으로 밀려나 잘렸다 */
+.cue-head{display:flex;align-items:baseline;gap:8px;padding:10px 14px 0;min-width:0}
+.cue-tools{display:flex;align-items:center;gap:6px;padding:8px 14px 6px;min-width:0}
+.cue-tools .spacer{flex:1}
+#noteMap{overflow:hidden;text-overflow:ellipsis;min-width:0}
 .cue-head h2{margin:0;font-family:var(--label);font-size:14px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--ink)}
 #noteFor{font-family:var(--data);font-size:12.5px;color:var(--next);font-variant-numeric:tabular-nums}
 #savedTag{margin-left:auto;font-size:12px;color:var(--ok);opacity:0;transition:opacity .25s ease}
 #savedTag.show{opacity:1}
 /* 조작부는 눌러도 되는 것처럼 보여야 한다 — 배경·테두리 없는 ghost 는 버튼으로 안 읽혔다 */
-.cue-head button{padding:5px 10px;font-size:12.5px;border-radius:6px}
+.cue-head button,.cue-tools button{padding:5px 10px;font-size:12.5px;border-radius:6px}
 /* "A− / A+" 로는 무슨 버튼인지 아무도 못 알아봤다 — 무엇을 조절하는지 말로 쓴다 */
 .fontgrp{display:flex;align-items:center;gap:4px;margin-left:auto;flex:none}
 .fontgrp button{min-width:38px;text-align:center}
-#savedTag{margin-left:0;flex:none}
+#savedTag{margin-left:auto;flex:none}
 .cue-head h2,.cue-head #noteFor{flex:none}
 #note{
   flex:1;min-height:110px;resize:none;margin:0 14px;padding:12px;
@@ -200,6 +205,18 @@ kbd{
 #dropzone p{margin:0;max-width:58ch;color:var(--ink-dim);text-wrap:pretty}
 #dropzone .fine{font-size:12.5px;color:#5d6572}
 input[type=file]{display:none}
+/* 시작 화면: 무엇이 필수이고 무엇이 선택인지 자리로 구분한다 */
+.setup{display:flex;gap:14px;flex-wrap:wrap;justify-content:center}
+.slot{display:flex;flex-direction:column;align-items:flex-start;gap:9px;
+  min-width:230px;padding:16px 18px;border:1px solid var(--rule);border-radius:12px;background:#12151a;text-align:left}
+.slot.filled{border-color:var(--ok)}
+.slot-k{font-family:var(--label);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-dim)}
+.slot-k b{color:var(--live);font-weight:600}
+.slot-k .opt{color:#6c7482}
+.slot-v{font-size:12.5px;color:#6c7482;max-width:24ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.slot.filled .slot-v{color:var(--ok)}
+#startBtn{padding:13px 30px;font-size:16px}
+#startBtn:disabled{opacity:.38}
 #resumeBtn{background:transparent;border-color:var(--rule);color:var(--next)}
 
 /* ── 단축키 도움말 ── */
@@ -285,12 +302,27 @@ input[type=file]{display:none}
 
 <div id="dropzone">
   <span class="kicker">Presenter Console</span>
-  <h1>HTML 발표 자료를 여기에 놓으세요</h1>
-  <p>완성된 슬라이드 HTML 파일 하나를 끌어다 놓으면, 청중 화면과 분리된 발표자 콘솔이
-     열립니다. 현재·다음 화면, 페이지별 메모, 경과 타이머가 함께 붙습니다.
-     내보낸 노트(.md)를 놓으면 메모를 다시 불러옵니다.</p>
-  <button id="pickBtn" class="primary">파일 선택</button>
-  <input type="file" id="fileInput" accept=".html,.htm,.md,text/html,text/markdown">
+  <h1>발표 준비</h1>
+  <p>발표 자료를 넣으면 청중 화면과 분리된 발표자 콘솔이 열립니다.
+     현재·다음 화면, 페이지별 메모, 경과 타이머가 함께 붙습니다.
+     끌어다 놓아도 됩니다.</p>
+
+  <div class="setup">
+    <div class="slot" id="slotDeck">
+      <div class="slot-k">발표 자료 <b>필수</b></div>
+      <button id="pickBtn">발표 자료 불러오기</button>
+      <div class="slot-v" id="deckPicked">아직 없음 — HTML 파일</div>
+    </div>
+    <div class="slot" id="slotNotes">
+      <div class="slot-k">발표 대본 <span class="opt">선택</span></div>
+      <button id="pickNotesBtn">발표 대본 불러오기</button>
+      <div class="slot-v" id="notesPicked">아직 없음 — 내보낸 노트(.md)</div>
+    </div>
+  </div>
+
+  <button id="startBtn" class="primary" disabled>발표 시작</button>
+  <input type="file" id="fileInput" accept=".html,.htm,text/html">
+  <input type="file" id="notesInput" accept=".md,text/markdown">
   <button id="resumeBtn" hidden></button>
   <p class="fine">파일은 이 브라우저 안에서만 열립니다. 서버로 올라가지 않고, 인터넷 없이도 동작합니다.</p>
 </div>
@@ -320,12 +352,15 @@ input[type=file]{display:none}
         <span id="noteFor"></span>
         <span id="noteMap"></span>
         <span id="savedTag" aria-live="polite">저장됨</span>
+      </div>
+      <div class="cue-tools">
         <span class="fontgrp">
           <button id="fontDown" title="메모 글씨 작게" aria-label="메모 글씨 작게">가−</button>
           <button id="fontUp" title="메모 글씨 크게" aria-label="메모 글씨 크게">가＋</button>
         </span>
-        <button id="importBtn" title="내보낸 노트 파일(.md)을 불러옵니다">불러오기</button>
-        <button id="exportBtn" title="이 자료의 메모를 .md 파일로 저장합니다">저장</button>
+        <div class="spacer"></div>
+        <button id="importBtn" title="내보낸 노트 파일(.md)을 불러옵니다">노트 불러오기</button>
+        <button id="exportBtn" title="이 자료의 메모를 .md 파일로 저장합니다">노트 저장</button>
         <input type="file" id="mdInput" accept=".md,text/markdown">
       </div>
       <textarea id="note" aria-label="이 페이지 메모" spellcheck="false"
@@ -549,15 +584,48 @@ function loadDeck(text, name){
 }
 window.__ptLoad = loadDeck; // 프로그래매틱 로드용(테스트/확장)
 
+// 발표 전에는 파일을 "고르기"만 하고, [발표 시작] 을 눌렀을 때 실제로 연다 —
+// 자료와 대본을 함께 준비한 뒤 한 번에 시작할 수 있어야 한다.
+let staged = { deck: null, notes: null };
+function renderSetup(){
+  const d = $('#deckPicked'), n = $('#notesPicked');
+  d.textContent = staged.deck ? staged.deck.name : '아직 없음 — HTML 파일';
+  n.textContent = staged.notes ? staged.notes.name : '아직 없음 — 내보낸 노트(.md)';
+  $('#slotDeck').classList.toggle('filled', !!staged.deck);
+  $('#slotNotes').classList.toggle('filled', !!staged.notes);
+  $('#startBtn').disabled = !staged.deck;                 // 자료 없이는 시작할 수 없다
+  $('#startBtn').title = staged.deck ? '' : '발표 자료를 먼저 불러와 주세요';
+}
+function stageFile(file, done){
+  const r = new FileReader();
+  r.onload = () => done(r.result);
+  r.readAsText(file);
+}
+function startPresenting(){
+  if (!staged.deck) return;
+  loadDeck(staged.deck.text, staged.deck.name);
+  if (staged.notes) setTimeout(() => importNotes(staged.notes.text), 300);   // 앵커가 준비된 뒤 붙인다
+}
+
 function handleFile(file){
   if (!file) return;
   const isMd = /\.md$/i.test(file.name);
-  if (isMd && !deckHTML) { flash('발표 자료를 먼저 열어주세요.'); return; }
-  const r = new FileReader();
-  r.onload = () => isMd ? importNotes(r.result) : loadDeck(r.result, file.name);
-  r.readAsText(file);
+  // 발표 중이면 즉시 반영, 시작 전이면 골라 두기만 한다
+  if (deckHTML) {
+    if (isMd && !deckHTML) { flash('발표 자료를 먼저 열어주세요.'); return; }
+    stageFile(file, text => isMd ? importNotes(text) : loadDeck(text, file.name));
+    return;
+  }
+  stageFile(file, text => {
+    if (isMd) staged.notes = { text, name: file.name };
+    else staged.deck = { text, name: file.name };
+    renderSetup();
+  });
 }
-$('#pickBtn').onclick = () => $('#fileInput').click();
+$('#pickBtn').onclick = function(){ this.blur(); $('#fileInput').click(); };
+$('#pickNotesBtn').onclick = function(){ this.blur(); $('#notesInput').click(); };
+$('#notesInput').onchange = e => { const f = e.target.files[0]; e.target.value = ''; handleFile(f); };
+$('#startBtn').onclick = function(){ this.blur(); startPresenting(); };
 $('#importBtn').onclick = function(){ this.blur(); $('#mdInput').click(); };
 $('#mdInput').onchange = e => { const f = e.target.files[0]; e.target.value = ''; handleFile(f); };
 $('#reloadBtn').onclick = function(){ this.blur(); $('#fileInput').click(); };
@@ -917,17 +985,20 @@ function injectAudienceUX(){
     d.addEventListener('fullscreenchange', () => btn.classList.toggle('pt-fade', !!d.fullscreenElement));
     // 4초 동안 마우스가 안 움직이면 커서·버튼 숨김
     let idleT = null;
+    // 처음에는 넉넉히 보여주고(발견용), 그 뒤에는 4초 무입력마다 숨긴다.
+    // 계속 띄워두면 청중 화면에 버튼이 박혀 있어 거슬리고, 바로 숨기면
+    // 그런 버튼이 있다는 걸 아무도 모른다(예전엔 4초 뒤 opacity:0 이라 못 찾았다).
+    // 마우스를 움직이면 언제든 다시 나타난다.
+    let firstReveal = true;
     const poke = () => {
       d.documentElement.classList.remove('pt-hidecursor');
       if (!d.fullscreenElement) btn.classList.remove('pt-fade');
       clearTimeout(idleT);
       idleT = win.setTimeout(() => {
         d.documentElement.classList.add('pt-hidecursor');
-        // 전체화면에 들어가기 전에는 버튼을 숨기지 않는다 — 숨기면 그런 버튼이
-        // 있다는 걸 아무도 모른다(실제로 opacity:0 상태라 못 찾았다).
-        // 전체화면에 들어간 뒤에는 할 일이 없으므로 그때부터 숨긴다.
-        if (d.fullscreenElement) btn.classList.add('pt-fade');
-      }, 4000);
+        btn.classList.add('pt-fade');
+        firstReveal = false;
+      }, firstReveal ? 12000 : 4000);
     };
     d.addEventListener('mousemove', poke);
     poke();
@@ -1387,7 +1458,7 @@ try {
     const b = $('#resumeBtn');
     b.hidden = false;
     b.textContent = '지난 발표 이어서 열기 — ' + last.name;
-    b.onclick = () => loadDeck(last.html, last.name);
+    b.onclick = () => { staged.deck = { text: last.html, name: last.name }; renderSetup(); };
   }
 } catch (_) {}
 
