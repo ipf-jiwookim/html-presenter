@@ -484,7 +484,7 @@ input[type=file]{display:none}
   <section class="bay" aria-label="현재 화면">
     <div class="tally">
       <span class="name">현재 화면</span>
-      <span class="note">지금 청중이 보고 있는 장면</span>
+      <span class="note" id="liveNote">청중 화면을 열면 이 장면이 나갑니다</span>
     </div>
     <div class="stage"><iframe id="mirror" title="현재 슬라이드"></iframe></div>
   </section>
@@ -1100,9 +1100,12 @@ $('#fsHint').onclick = function(){
   flash('청중 창에서 F 를 누르거나 화면의 [⛶ 전체화면] 버튼을 클릭하세요.');
 };
 
-// ══ 발표 중 실수로 창을 닫는 것 방지 — 발표를 시작한 뒤에만 묻는다 ══
+// ══ 발표 중 실수로 창을 닫는 것 방지 ══
+// started 만 보면 "청중 창을 열고 아직 한 장도 안 넘긴" 상태에서 경고가 안 떴다.
+// 청중이 보고 있는 중이면 넘겼든 안 넘겼든 발표 중이다.
 window.addEventListener('beforeunload', e => {
-  if (!deckHTML || !started) return;
+  const live = !!(audience && !audience.closed);
+  if (!deckHTML || (!started && !live)) return;
   e.preventDefault(); e.returnValue = '';
 });
 
@@ -1127,6 +1130,9 @@ function openAudience(){
   writeDoc(audience);
   hookAudience();
   warnScreenExposure();
+  // 청중이 볼 수 있게 된 순간이 발표가 시작된 순간이다. 첫 [다음] 을 기다리면
+  // 1장에서 인사말을 하는 동안 경과가 00:00 에 머물러 사실과 달라진다.
+  if (!started) startTimer();
   if (step > 0) setTimeout(() => replay(audience, step), 900);
   audience.focus();
 }
@@ -1249,6 +1255,14 @@ setInterval(() => {
   if (!on && audience) audience = null;
   autoSyncAudience();
   markPreviewEnd();
+  // 청중 창이 없으면 아무도 보고 있지 않다. 보고 있다고 말하지 않는다.
+  $('#liveNote').textContent = on ? '지금 청중이 보고 있는 장면' : '청중 화면을 열면 이 장면이 나갑니다';
+  // 이미 열려 있으면 랙에서 가장 강한 빨강을 끝난 작업에 계속 쓰지 않는다.
+  // (누르면 그 창을 앞으로 가져오기만 한다)
+  const ob = $('#openAud');
+  ob.textContent = on ? '청중 화면 보이기' : '청중 화면 열기';
+  ob.classList.toggle('primary', !on);
+  ob.title = on ? '청중 화면 창을 앞으로 가져옵니다' : '';
   const auto = on && !!deckState(audience);
   $('#fsHint').hidden = !on;
   $('.trim').hidden = !on;                       // 청중 창이 없으면 보정할 대상이 없다
