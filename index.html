@@ -342,7 +342,12 @@ function writeFrame(iframe, ahead){
 }
 function replay(w, n){
   let i = 0;
-  const t = setInterval(() => { sendKey(w, 1); if (++i >= n) clearInterval(t); }, 80);
+  const t = setInterval(() => {
+    sendKey(w, 1);
+    // 복원이 끝나면 미리보기 오프셋을 다시 맞춘다 — 복원 중에 사용자가 먼저 넘기면
+    // 뒤늦게 도착한 복원 키가 미리보기를 한 장 더 밀어버리기 때문.
+    if (++i >= n) { clearInterval(t); syncPreview(deckState(mirror.contentWindow)); }
+  }, 80);
 }
 
 /* ---------- 범용 내비게이션: 키 이벤트 + 스크롤 폴백 ---------- */
