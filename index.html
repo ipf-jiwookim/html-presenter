@@ -576,7 +576,7 @@ function openAudience(){
   audience.focus();
 }
 $('#openAud').onclick = function(){ this.blur(); openAudience(); };
-$('#noticeBtn').onclick = function(){ this.blur(); openAudience(); };
+restoreNoticeBtn();
 
 function hookAudience(){
   // 청중 창에서 직접 키를 누르면 발표자 콘솔도 따라오게 역방향 동기화
@@ -749,6 +749,48 @@ function loadRec(){
     rec.anchors = moved.anchors; rec.byIndex = moved.byIndex;
     saveRecNow();
   }
+  if (!Object.keys(rec.anchors).length && !Object.keys(rec.byIndex).length) offerRecovery();
+}
+
+// 파일명만 바뀐 경우(발표자료.html → 발표자료_최종.html) 앵커 겹침으로 이전 노트를 찾아 제안한다.
+// 'empty'/'empty#n' 앵커(빈 슬라이드)는 겹침 계산에서 제외한다 — 그렇지 않으면 서로 무관한
+// 덱이 우연히 같은 개수의 빈 슬라이드를 갖고 있다는 이유만으로 100% 일치로 오판될 수 있다.
+function offerRecovery(){
+  const mine = deckAnchors();
+  if (!mine) return;
+  const mineReal = mine.filter(a => !a.startsWith('empty'));
+  if (!mineReal.length) return;
+  let best = null;
+  store.keys().forEach(k => {
+    if (k.indexOf('ptnotes2:') !== 0 || k === recKey() || k.endsWith(':undo')) return;
+    let other;
+    try { other = JSON.parse(store.get(k)); } catch (_) { return; }
+    const keys = Object.keys((other && other.anchors) || {}).filter(a => !a.startsWith('empty'));
+    if (!keys.length) return;
+    const score = anchorOverlap(keys, mineReal);
+    if (score >= 0.4 && (!best || score > best.score)) best = { key: k, score, count: keys.length, rec: other };
+  });
+  if (!best) return;
+  const from = best.key.slice('ptnotes2:'.length);
+  showNotice(`「${from}」에 쓴 노트 ${best.count}개가 있습니다. 이 자료의 것으로 보입니다.`);
+  const btn = $('#noticeBtn');
+  btn.hidden = false;
+  btn.textContent = '불러오기';
+  btn.onclick = () => {
+    rec.anchors = Object.assign({}, best.rec.anchors);
+    rec.byIndex = Object.assign({}, best.rec.byIndex || {});
+    rec.orphans = (best.rec.orphans || []).slice();
+    saveRecNow(); loadNotes();
+    $('#notice').hidden = true;
+    restoreNoticeBtn();
+    flash(`노트 ${best.count}개를 불러왔습니다.`);
+  };
+}
+// 알림 바 버튼을 기본(청중 화면 열기)으로 되돌린다
+function restoreNoticeBtn(){
+  const btn = $('#noticeBtn');
+  btn.textContent = '청중 화면 열기';
+  btn.onclick = function(){ this.blur(); openAudience(); };
 }
 
 // 인덱스로만 남아있는 구노트를 앵커로 승격한다. 플래그 없이 매번 시도해도 안전하다 —
