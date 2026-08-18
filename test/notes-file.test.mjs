@@ -59,6 +59,18 @@ test('parseNotes: 노트 본문의 ## 줄은 살아남는다', () => {
   assert.equal(r.anchors.bb, '둘째');
 });
 
+test('parseNotes: 미배정으로 내보낸 위치 기반 메모도 왕복한다', () => {
+  const md = PURE.serializeNotes({ deckName: 'a.html', total: 3, today: '2026-08-18',
+    notes: [{ anchor: 'aa11bb', index: 0, title: '표지', text: '앵커 노트' }],
+    orphans: [{ text: '위치 기반 메모', hint: '2번째 장 (위치 기반 메모)' }] });
+  const r = PURE.parseNotes(md);
+  assert.equal(r.ok, true);
+  assert.deepEqual(r.anchors, { aa11bb: '앵커 노트' });
+  assert.equal(r.orphans.length, 1);
+  assert.equal(r.orphans[0].text, '위치 기반 메모');
+  assert.equal(r.orphans[0].hint, '2번째 장 (위치 기반 메모)');
+});
+
 test('parseNotes: 같은 앵커가 두 번 나오면 이어 붙인다', () => {
   const md = '<!-- html-presenter notes v1 -->\n'
     + '<!-- slide: aa -->\n첫 번째\n\n'

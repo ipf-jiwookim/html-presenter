@@ -484,7 +484,10 @@ function loadDeck(text, name){
   retryMigration();
   updateStep(); loadNotes();
   setTimeout(() => {
-    updateStep(); retryMigration(); resettleAnchors();
+    updateStep();
+    // 승격으로 큐 시트 내용이 바뀔 수 있다(밀려난 노트가 미배정함으로 감). 화면을 사실과 맞춘다.
+    if (retryMigration()) loadNotes();
+    resettleAnchors();
     if (!Object.keys(rec.anchors).length && !Object.keys(rec.byIndex).length) offerRecovery();
   }, 1000);   // 덱이 첫 장을 늦게 표시하는 경우
   setTimeout(resettleAnchors, 2500);   // 더 느리게 정착하는 덱을 위한 두 번째 체크포인트
@@ -979,9 +982,19 @@ function retryMigration(){
   let changed = false;
   Object.keys(rec.byIndex).forEach(k => {
     const a = anchors[Number(k)];
-    if (a) { rec.anchors[a] = rec.byIndex[k]; delete rec.byIndex[k]; changed = true; }
+    if (!a) return;
+    const incoming = rec.byIndex[k];
+    if (rec.anchors[a] == null) { rec.anchors[a] = incoming; }
+    else if (rec.anchors[a] !== incoming) {
+      // 앵커 자리에 이미 다른 노트가 있으면 덮지 않고 미배정함으로 옮긴다
+      rec.orphans = rec.orphans || [];
+      rec.orphans.push({ text: incoming, hint: `${Number(k) + 1}번째 장 · 앵커 승격 중 밀려난 노트` });
+    }
+    delete rec.byIndex[k];
+    changed = true;
   });
   if (changed) saveRecNow();
+  return changed;
 }
 
 // 덱 텍스트가 초기 렌더 이후에도 계속 바뀌는 경우(타이핑 애니메이션·지연 렌더링 등),
@@ -1055,21 +1068,32 @@ function exportNotes(){
   const total = (deckState(mirror.contentWindow) || {}).n || 0;
   const notes = [];
   if (list) list.forEach((a, i) => { if (rec.anchors[a]) notes.push({ anchor: a, index: i, title: slideTitle(i), text: rec.anchors[a] }); });
+  // 인덱스 기반 노트는 내용에 앵커를 걸 수 없으므로 미배정으로 내보낸다 —
+  // index-N 같은 가짜 앵커는 파서가 되읽지 못해 왕복에서 조용히 사라진다.
+  const orphansOut = (rec.orphans || []).slice();
   Object.keys(rec.byIndex).forEach(k => {
     const i = Number(k);
-    if (rec.byIndex[k]) notes.push({ anchor: 'index-' + i, index: i, title: slideTitle(i), text: rec.byIndex[k] });
+    if (rec.byIndex[k]) orphansOut.push({ text: rec.byIndex[k], hint: `${i + 1}번째 장 (위치 기반 메모)` });
   });
+  // 현재 덱에 없는 앵커에 남아있는 노트도 미배정으로 함께 내보낸다 — 그렇지 않으면
+  // 큐 시트·미배정함·내보내기 어디에도 나타나지 않아 사실상 복구 불가가 된다.
+  if (list) {
+    const inDeck = new Set(list);
+    Object.keys(rec.anchors).forEach(a => {
+      if (!inDeck.has(a) && rec.anchors[a]) orphansOut.push({ text: rec.anchors[a], hint: '이 자료에 없는 위치의 메모' });
+    });
+  }
   notes.sort((a, b) => a.index - b.index);
   const md = serializeNotes({
     deckName, total, today: new Date().toISOString().slice(0, 10),
-    notes, orphans: rec.orphans || []
+    notes, orphans: orphansOut
   });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([md], { type: 'text/markdown;charset=utf-8' }));
   a.download = noteFileName(deckName, new Date().toISOString().slice(0, 10));
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-  flash(`노트 ${notes.length}개를 내보냈습니다.`);
+  flash(`노트 ${notes.length + orphansOut.length}개를 내보냈습니다.`);
 }
 $('#exportBtn').onclick = function(){ this.blur(); exportNotes(); };
 function refreshExportBtn(){
