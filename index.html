@@ -291,7 +291,17 @@ function fnv1a(str){
   return (h >>> 0).toString(16).padStart(8, '0').slice(-6);
 }
 
-const PURE = { fnv1a };
+// 숫자를 포함한 토큰은 버린다 — 페이지 카운터(P.07 / 21)나 날짜가 지문에 섞이면
+// 장 수가 바뀔 때 전 슬라이드의 지문이 함께 무효화된다.
+function normTokens(text){
+  return String(text == null ? '' : text)
+    .toLowerCase()
+    .split(/\s+/)
+    .map(t => t.replace(/[^\p{L}\p{N}]+/gu, ''))
+    .filter(t => t && !/\p{N}/u.test(t));
+}
+
+const PURE = { fnv1a, normTokens };
 /* ==== PURE CORE END ==== */
 if (typeof window !== 'undefined') window.__pt = PURE;   // 브라우저 검증용 훅
 
