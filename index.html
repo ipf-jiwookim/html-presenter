@@ -154,6 +154,13 @@ main{
   content:'다음 페이지 메모';display:block;
   font-family:var(--label);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--next);margin-bottom:3px;
 }
+#orphanBox{margin:0 14px 14px;border:1px solid var(--rule);border-radius:8px;background:#12151a}
+#orphanSum{padding:9px 12px;cursor:pointer;font-family:var(--label);font-size:12.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--next)}
+.orphan{padding:10px 12px;border-top:1px solid var(--rule);display:flex;flex-direction:column;gap:7px}
+.orphan .hint{font-size:11.5px;color:#6c7482}
+.orphan .body{font-size:13px;line-height:1.6;white-space:pre-wrap;max-height:4.5em;overflow:auto}
+.orphan .row{display:flex;gap:7px}
+.orphan button{padding:5px 10px;font-size:12.5px}
 
 /* ── 하단 트랜스포트 ── */
 .transport{
@@ -263,6 +270,10 @@ input[type=file]{display:none}
       <textarea id="note" aria-label="이 페이지 메모" spellcheck="false"
         placeholder="이 페이지에서 할 말을 적어두세요…"></textarea>
       <div id="nextnote"></div>
+      <details id="orphanBox" hidden>
+        <summary id="orphanSum"></summary>
+        <div id="orphanList"></div>
+      </details>
     </section>
   </div>
 </main>
@@ -944,7 +955,41 @@ function refreshExportBtn(){
   $('#exportBtn').disabled = !has;
   $('#exportBtn').title = has ? '' : '내보낼 메모가 없습니다';
 }
-function renderOrphans(){}
+function renderOrphans(){
+  const box = $('#orphanBox'), list = $('#orphanList');
+  const items = rec.orphans || [];
+  box.hidden = !items.length;
+  if (!items.length) { list.textContent = ''; return; }
+  $('#orphanSum').textContent = `자리를 못 찾은 노트 ${items.length}개`;
+  list.textContent = '';
+  items.forEach((o, idx) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'orphan';
+    const hint = document.createElement('div');
+    hint.className = 'hint';
+    hint.textContent = o.hint ? `원래 위치: ${o.hint}` : '원래 위치 정보 없음';
+    const body = document.createElement('div');
+    body.className = 'body';
+    body.textContent = o.text;
+    const row = document.createElement('div');
+    row.className = 'row';
+    const put = document.createElement('button');
+    put.textContent = '이 페이지에 붙이기';
+    put.onclick = () => {
+      const cur = noteGet(step);
+      noteSet(step, cur ? cur + '\n\n' + o.text : o.text);   // 덮지 않고 이어 붙인다
+      rec.orphans.splice(idx, 1);
+      saveRecNow(); loadNotes(); refreshExportBtn();
+      flash(`${step + 1}페이지에 붙였습니다.`);
+    };
+    const del = document.createElement('button');
+    del.textContent = '삭제';
+    del.onclick = () => { rec.orphans.splice(idx, 1); saveRecNow(); renderOrphans(); refreshExportBtn(); };
+    row.append(put, del);
+    wrap.append(hint, body, row);
+    list.append(wrap);
+  });
+}
 
 /* ---------- 화면 꺼짐 방지 ---------- */
 function reqWakeLock(){
