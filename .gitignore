@@ -1,0 +1,8 @@
+.DS_Store
+
+# 아티팩트 미리보기용 사본 — build-artifact.py 로 생성되는 파일
+artifact.html
+build-artifact.py
+
+# 테스트용으로 잠깐 복사해 두는 실제 발표 자료
+test-deck.html

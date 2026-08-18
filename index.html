@@ -1,0 +1,654 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0e1013">
+<title>발표자 콘솔</title>
+<style>
+/* ─────────────────────────────────────────────────────────────
+   부조정실 콘솔. PROGRAM(청중이 보는 화면) / PREVIEW(다음 화면) 탤리 구조.
+   강의장 와이파이가 죽어도 동작해야 하므로 웹폰트를 링크하지 않고
+   OS 기본 폰트 중 성격 있는 것들만 골라 스택으로 쓴다.
+   어두운 강의장 전용이라 다크 단일 테마로 확정하고 색은 전부 명시한다.
+   ───────────────────────────────────────────────────────────── */
+:root{
+  color-scheme: dark;
+  --void:#0e1013;        /* 모니터 베젤 */
+  --console:#181b21;     /* 콘솔 패널 */
+  --raised:#23272f;      /* 조작부 */
+  --raised-hi:#2c313a;
+  --rule:#2e343e;
+  --ink:#e7eaee;
+  --ink-dim:#8d95a1;     /* 살짝 차가운 쪽으로 기울인 중성색 */
+  --live:#ff4230;        /* 탤리 레드 — 송출 중 */
+  --next:#ffb02e;        /* 탤리 앰버 — 다음 */
+  --ok:#35c98a;          /* 연결됨(의미색) */
+  --label:'Avenir Next Condensed','Bahnschrift SemiLight','Arial Narrow',sans-serif;
+  --ui:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;
+  --data:'SF Mono',Menlo,'Cascadia Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{
+  margin:0;display:flex;flex-direction:column;gap:1px;
+  background:var(--void);color:var(--ink);
+  font:15px/1.55 var(--ui);
+  -webkit-tap-highlight-color:transparent;
+}
+
+/* ── 라벨 타이포: 압축형 대문자 ── */
+.label{
+  font-family:var(--label);font-size:13px;font-weight:600;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--ink-dim);
+}
+
+/* ── 상단 랙 ── */
+.rack{
+  display:flex;align-items:center;gap:14px;padding:10px 16px;
+  background:linear-gradient(180deg,#1d2129,#161a20);
+  border-bottom:1px solid var(--rule);
+}
+.deck-id{
+  font-family:var(--label);font-size:17px;font-weight:600;letter-spacing:.04em;
+  max-width:34ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.spacer{flex:1}
+#posChip{
+  font-family:var(--data);font-size:17px;font-weight:700;font-variant-numeric:tabular-nums;
+  padding:5px 12px;border-radius:6px;background:#000;color:var(--live);
+  border:1px solid #3a2020;min-width:7.5ch;text-align:center;
+  white-space:nowrap;flex:none;
+}
+#posChip.at-end{color:var(--next);border-color:#3d3016}
+#audStatus{font-family:var(--label);font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-dim);white-space:nowrap;flex:none}
+#audStatus.on{color:var(--ok)}
+/* 계측부: 무엇을 세는 숫자인지 라벨로 못박는다 */
+.meter{display:flex;align-items:baseline;gap:7px;flex:none}
+.meter-k{font-family:var(--label);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6c7482}
+#clock{font-family:var(--data);font-size:16px;color:var(--ink-dim);font-variant-numeric:tabular-nums}
+#timer{
+  font-family:var(--data);font-size:30px;font-weight:700;line-height:1;
+  font-variant-numeric:tabular-nums;min-width:5.2ch;text-align:right;
+}
+
+/* ── 버튼 ── */
+button{
+  font:inherit;color:var(--ink);background:var(--raised);
+  border:1px solid var(--rule);border-radius:8px;
+  padding:10px 16px;cursor:pointer;touch-action:manipulation;white-space:nowrap;flex:none;
+  transition:background .15s ease,border-color .15s ease,transform .1s ease;
+}
+button:hover:not(:disabled){background:var(--raised-hi);border-color:#3c434f}
+button:active:not(:disabled){transform:translateY(1px)}
+button:disabled{opacity:.38;cursor:not-allowed}
+button:focus-visible{outline:2px solid var(--next);outline-offset:2px}
+.icon-btn{
+  min-width:48px;min-height:44px;padding:0 14px;
+  font-size:19px;line-height:1;display:inline-flex;align-items:center;justify-content:center;
+}
+/* 트랜스포트: 이전·다음은 같은 크기·같은 재질의 한 쌍. 다음만 탤리 LED 로 구분한다 */
+.tbtn{
+  min-width:132px;height:54px;gap:9px;font-size:17px;font-weight:600;
+  display:inline-flex;align-items:center;justify-content:center;
+  background:linear-gradient(180deg,#2b3039,#22262e);
+}
+.tbtn:hover:not(:disabled){background:linear-gradient(180deg,#333944,#282d36)}
+.tbtn.live{border-color:#7c2c23;box-shadow:inset 0 0 0 1px rgba(255,66,48,.22)}
+.tbtn.live::before{
+  content:'';width:9px;height:9px;border-radius:50%;flex:none;
+  background:var(--live);box-shadow:0 0 9px var(--live);
+}
+.primary{background:var(--live);border-color:#ff6a5c;color:#fff;font-weight:700}
+.primary:hover:not(:disabled){background:#ff5745;border-color:#ff8578}
+.ghost{background:transparent;border-color:transparent;color:var(--ink-dim);padding:6px 10px}
+.ghost:hover:not(:disabled){background:var(--raised);color:var(--ink)}
+
+/* ── 본체: 두 개의 모니터 ── */
+main{
+  flex:1;min-height:0;display:grid;gap:1px;
+  grid-template-columns:minmax(0,1fr) minmax(340px,29vw);
+  background:var(--rule);
+}
+.bay{display:flex;flex-direction:column;min-height:0;min-width:0;background:var(--console)}
+.tally{
+  display:flex;align-items:center;gap:10px;padding:9px 14px;
+  border-top:3px solid var(--live);background:#1b1216;
+}
+.tally.next{border-top-color:var(--next);background:#1a1611}
+.tally .dot{width:9px;height:9px;border-radius:50%;background:var(--live);box-shadow:0 0 10px var(--live)}
+.tally.next .dot{background:var(--next);box-shadow:0 0 10px var(--next)}
+.tally .name{font-family:var(--label);font-size:14px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--live)}
+.tally.next .name{color:var(--next)}
+.tally .note{font-size:12.5px;color:var(--ink-dim)}
+@media (prefers-reduced-motion: no-preference){
+  .tally .dot{animation:pulse 2.4s ease-in-out infinite}
+  @keyframes pulse{50%{opacity:.35}}
+}
+.stage{
+  position:relative;flex:1;min-height:0;overflow:hidden;
+  background:#000;box-shadow:inset 0 0 0 1px #000, inset 0 0 60px rgba(0,0,0,.9);
+}
+.stage iframe{position:absolute;width:1280px;height:720px;border:0;transform-origin:0 0;pointer-events:none;background:#fff}
+.bay.side .stage{flex:0 0 auto;aspect-ratio:16/9}
+.bay.side{display:flex;flex-direction:column}
+
+/* ── 큐 시트(메모) ── */
+.cue{display:flex;flex-direction:column;flex:1;min-height:0;border-top:1px solid var(--rule)}
+.cue-head{display:flex;align-items:baseline;gap:10px;padding:10px 14px 6px}
+.cue-head h2{margin:0;font-family:var(--label);font-size:14px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--ink)}
+#noteFor{font-family:var(--data);font-size:12.5px;color:var(--next);font-variant-numeric:tabular-nums}
+#savedTag{margin-left:auto;font-size:12px;color:var(--ok);opacity:0;transition:opacity .25s ease}
+#savedTag.show{opacity:1}
+#note{
+  flex:1;min-height:110px;resize:none;margin:0 14px;padding:12px;
+  background:#12151a;color:var(--ink);border:1px solid var(--rule);border-radius:8px;
+  font:16px/1.7 var(--ui);
+}
+#note::placeholder{color:#5d6572}
+#note:focus-visible{outline:2px solid var(--next);outline-offset:1px;border-color:transparent}
+#nextnote{margin:8px 14px 14px;font-size:13px;line-height:1.6;color:var(--ink-dim);max-height:5.5em;overflow:auto;white-space:pre-wrap}
+#nextnote:not(:empty)::before{
+  content:'다음 페이지 메모';display:block;
+  font-family:var(--label);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--next);margin-bottom:3px;
+}
+
+/* ── 하단 트랜스포트 ── */
+.transport{
+  display:flex;align-items:center;gap:12px;padding:11px 16px;
+  background:linear-gradient(180deg,#1a1e25,#141821);border-top:1px solid var(--rule);
+}
+.transport .hint{font-size:12.5px;color:var(--ink-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* 좁은 화면에서는 단축키 안내를 접어 조작부를 우선한다 */
+@media (max-width:1100px){ .transport .hint{display:none} }
+@media (max-width:900px){ .trim .label{display:none} }
+kbd{
+  font-family:var(--data);font-size:11.5px;padding:2px 6px;margin:0 1px;
+  background:#0f1216;border:1px solid var(--rule);border-radius:4px;color:var(--ink-dim);
+}
+.trim{display:flex;align-items:center;gap:8px}
+.trim .label{font-size:12px}
+#flash{font-size:13px;color:var(--next);min-height:1em}
+
+/* ── 시작 화면 ── */
+#dropzone{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;
+  margin:22px;padding:40px;text-align:center;
+  border:1px dashed var(--rule);border-radius:14px;
+  background:radial-gradient(120% 90% at 50% 0%,#1a1f27 0%,var(--void) 70%);
+}
+#dropzone.over{border-color:var(--next);border-style:solid;background:radial-gradient(120% 90% at 50% 0%,#241f14 0%,var(--void) 70%)}
+#dropzone h1{
+  margin:0;font-family:var(--label);font-size:clamp(26px,4vw,42px);font-weight:600;
+  letter-spacing:.06em;text-transform:uppercase;text-wrap:balance;
+}
+#dropzone .kicker{font-family:var(--label);font-size:13px;letter-spacing:.3em;text-transform:uppercase;color:var(--live)}
+#dropzone p{margin:0;max-width:58ch;color:var(--ink-dim);text-wrap:pretty}
+#dropzone .fine{font-size:12.5px;color:#5d6572}
+input[type=file]{display:none}
+#resumeBtn{background:transparent;border-color:var(--rule);color:var(--next)}
+
+/* ── 알림 바 ── */
+#notice{
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  padding:11px 16px;background:#2a1d12;border-bottom:1px solid #4a3418;color:#ffdcae;font-size:14px;
+}
+</style>
+</head>
+<body>
+
+<header class="rack" id="rack" hidden>
+  <span class="deck-id" id="deckname" translate="no"></span>
+  <span id="posChip" aria-live="polite">— / —</span>
+  <span id="audStatus" aria-live="polite">청중 화면 없음</span>
+  <div class="spacer"></div>
+  <span class="meter" title="지금 시각">
+    <span class="meter-k">현재 시각</span><time id="clock"></time>
+  </span>
+  <span class="meter" title="발표를 시작한 뒤 흐른 시간">
+    <span class="meter-k">경과</span><span id="timer" aria-label="경과 시간">00:00</span>
+  </span>
+  <button id="timerBtn" class="icon-btn" aria-label="타이머 시작 또는 일시정지">▶</button>
+  <button id="resetBtn" class="icon-btn" aria-label="타이머 리셋">↺</button>
+  <button id="openAud" class="primary">청중 화면 열기</button>
+  <button id="reloadBtn" class="ghost">파일 교체</button>
+</header>
+
+<div id="notice" role="status" hidden>
+  <span id="noticeMsg"></span>
+  <button id="noticeBtn" class="primary">청중 화면 열기</button>
+</div>
+
+<div id="dropzone">
+  <span class="kicker">Presenter Console</span>
+  <h1>HTML 발표 자료를 여기에 놓으세요</h1>
+  <p>완성된 슬라이드 HTML 파일 하나를 끌어다 놓으면, 청중 화면과 분리된 발표자 콘솔이
+     열립니다. 현재·다음 화면, 페이지별 메모, 경과 타이머가 함께 붙습니다.</p>
+  <button id="pickBtn" class="primary">파일 선택</button>
+  <input type="file" id="fileInput" accept=".html,.htm,text/html">
+  <button id="resumeBtn" hidden></button>
+  <p class="fine">파일은 이 브라우저 안에서만 열립니다. 서버로 올라가지 않고, 인터넷 없이도 동작합니다.</p>
+</div>
+
+<main id="app" hidden>
+  <section class="bay" aria-label="현재 화면">
+    <div class="tally">
+      <span class="dot" aria-hidden="true"></span>
+      <span class="name">On Air</span>
+      <span class="note">청중이 지금 보고 있는 화면</span>
+    </div>
+    <div class="stage"><iframe id="mirror" title="현재 슬라이드"></iframe></div>
+  </section>
+
+  <div class="bay side" aria-label="다음 화면과 메모">
+    <div class="tally next">
+      <span class="dot" aria-hidden="true"></span>
+      <span class="name" id="prevLabel">Next</span>
+      <div class="spacer"></div>
+      <button id="resync" class="ghost" title="미리보기가 청중 화면과 어긋났을 때">재동기화</button>
+    </div>
+    <div class="stage"><iframe id="preview" title="다음 슬라이드"></iframe></div>
+
+    <section class="cue">
+      <div class="cue-head">
+        <h2>큐 시트</h2>
+        <span id="noteFor"></span>
+        <span id="savedTag" aria-live="polite">저장됨</span>
+      </div>
+      <textarea id="note" aria-label="이 페이지 메모" spellcheck="false"
+        placeholder="이 페이지에서 할 말을 적어두세요…"></textarea>
+      <div id="nextnote"></div>
+    </section>
+  </div>
+</main>
+
+<footer class="transport" id="transport" hidden>
+  <button id="prevBtn" class="tbtn" aria-label="이전 슬라이드">◀ 이전</button>
+  <button id="nextBtn" class="tbtn live" aria-label="다음 슬라이드">다음 ▶</button>
+  <span class="hint"><kbd>→</kbd><kbd>Space</kbd> 다음 · <kbd>←</kbd> 이전 · 청중 화면에서 <kbd>F</kbd> 전체화면</span>
+  <span id="flash" role="status"></span>
+  <div class="spacer"></div>
+  <div class="trim">
+    <span class="label">청중 화면만 보정</span>
+    <button id="audPrev" class="icon-btn" aria-label="청중 화면만 이전으로" disabled>◀</button>
+    <button id="audNext" class="icon-btn" aria-label="청중 화면만 다음으로" disabled>▶</button>
+  </div>
+</footer>
+
+<script>
+'use strict';
+const $ = s => document.querySelector(s);
+let deckHTML = '', deckName = '', step = 0, audience = null, started = false;
+let mirror = $('#mirror'), preview = $('#preview');   // 덱 로드마다 새 iframe 으로 교체된다
+
+/* ---------- 덱 로드 ---------- */
+function loadDeck(text, name){
+  deckHTML = text; deckName = name || 'deck.html'; step = 0;
+  $('#deckname').textContent = deckName;
+  document.title = deckName + ' — 발표자 콘솔';
+  $('#dropzone').hidden = true;
+  ['#app','#rack','#transport'].forEach(s => $(s).hidden = false);
+  mirror = writeFrame(mirror, 0);
+  preview = writeFrame(preview, 1);
+  // 청중 창은 새 Window 가 필요하다(아래 freshFrame 주석 참고). 닫고 다시 열도록 안내한다.
+  if (audience && !audience.closed) {
+    audience.close(); audience = null;
+    showNotice('발표 자료가 바뀌었습니다. 청중 화면을 다시 열어주세요.');
+  }
+  updateStep(); loadNotes();
+  setTimeout(() => updateStep(), 1000);   // 덱이 첫 장을 늦게 표시하는 경우
+  reqWakeLock();
+  store.set('ptlast', JSON.stringify({ name: deckName, html: deckHTML }));
+}
+window.__ptLoad = loadDeck; // 프로그래매틱 로드용(테스트/확장)
+
+function handleFile(file){
+  if (!file) return;
+  const r = new FileReader();
+  r.onload = () => loadDeck(r.result, file.name);
+  r.readAsText(file);
+}
+$('#pickBtn').onclick = () => $('#fileInput').click();
+$('#reloadBtn').onclick = function(){ this.blur(); $('#fileInput').click(); };
+$('#fileInput').onchange = e => handleFile(e.target.files[0]);
+document.addEventListener('dragover', e => { e.preventDefault(); $('#dropzone').classList.add('over'); });
+document.addEventListener('dragleave', () => $('#dropzone').classList.remove('over'));
+document.addEventListener('drop', e => {
+  e.preventDefault(); $('#dropzone').classList.remove('over');
+  handleFile(e.dataTransfer.files[0]);
+});
+
+/* ---------- 프레임에 덱 쓰기 ---------- */
+function writeDoc(win){
+  const d = win.document;
+  d.open(); d.write(deckHTML); d.close();
+}
+// iframe 을 새로 만들어서 쓴다 — document.write 는 Window 를 재사용하므로,
+// 앞 덱이 남긴 전역 let/const 와 다음 덱의 변수명이 겹치면(i, slides 등) 덱 스크립트가 통째로 죽는다.
+function freshFrame(old){
+  const f = document.createElement('iframe');
+  f.id = old.id; f.title = old.title;
+  old.parentNode.replaceChild(f, old);
+  return f;
+}
+function writeFrame(iframe, ahead){
+  const f = freshFrame(iframe);
+  writeDoc(f.contentWindow);
+  const n = step + ahead;
+  if (n > 0) setTimeout(() => replay(f.contentWindow, n), 900); // 덱 스크립트 초기화 대기
+  fitStages();
+  return f;
+}
+function replay(w, n){
+  let i = 0;
+  const t = setInterval(() => { sendKey(w, 1); if (++i >= n) clearInterval(t); }, 80);
+}
+
+/* ---------- 범용 내비게이션: 키 이벤트 + 스크롤 폴백 ---------- */
+function sendKey(win, dir){
+  if (!win) return;
+  try {
+    const d = win.document;
+    const key = dir > 0 ? 'ArrowRight' : 'ArrowLeft';
+    const kc = dir > 0 ? 39 : 37;
+    const e = new KeyboardEvent('keydown', { key, code: key, bubbles: true, cancelable: true });
+    Object.defineProperty(e, 'keyCode', { value: kc });
+    Object.defineProperty(e, 'which', { value: kc });
+    (d.body || d.documentElement).dispatchEvent(e);
+    // 스크롤형 덱 폴백: 남은 스크롤이 있을 때만 한 화면씩 이동
+    const se = d.scrollingElement || d.documentElement;
+    if (se && se.scrollHeight > se.clientHeight + 80) {
+      const room = dir > 0 ? se.scrollTop + se.clientHeight < se.scrollHeight - 2 : se.scrollTop > 2;
+      if (room) win.scrollBy({ top: dir * win.innerHeight, behavior: 'smooth' });
+    }
+  } catch (_) {}
+}
+
+/* ---------- 덱이 실제로 움직였는지 판정 ----------
+   구조를 아는 덱(현재 장에 active/visible 류 클래스)은 인덱스로,
+   모르는 덱은 문서 지문 비교로 판정한다. 마지막·첫 장에서 단계가 헛도는 것을 막는다. */
+const ACT_STRONG = /(^|\s)(active|current)(\s|$)/;
+const ACT_LOOSE  = /(^|\s)(visible|shown|show|on|selected)(\s|$)/;
+function deckState(win){
+  try {
+    const d = win.document;
+    for (const sel of ['.slide', '.slides > *', '.step', '.page', 'section']) {
+      const els = [...d.querySelectorAll(sel)];
+      if (els.length < 2) continue;
+      for (const re of [ACT_STRONG, ACT_LOOSE]) {
+        const i = els.findIndex(el => re.test(el.getAttribute('class') || ''));
+        if (i >= 0) return { i, n: els.length };
+      }
+    }
+  } catch (_) {}
+  return null;
+}
+function sig(win){
+  try {
+    const d = win.document;
+    let s = (d.scrollingElement || d.documentElement).scrollTop + '|';
+    const els = d.querySelectorAll('*');
+    for (let k = 0; k < els.length; k++) s += els[k].getAttribute('class') + '·' + els[k].getAttribute('style') + '~';
+    return s;
+  } catch (_) { return null; }
+}
+
+function nav(dir, includeAudience = true){
+  if (dir < 0 && step === 0) return endFlash(dir);
+  const mw = mirror.contentWindow;
+  const before = deckState(mw), beforeSig = sig(mw);
+  // 청중 화면부터 보낸다 — 판정이 틀려도 청중 화면이 어긋나지 않게
+  if (includeAudience && audience && !audience.closed) sendKey(audience, dir);
+  sendKey(mw, dir);
+  const after = deckState(mw);
+  const moved = (before && after) ? after.i !== before.i : sig(mw) !== beforeSig;
+  if (!moved) { endFlash(dir); settle(); return; }
+  sendKey(preview.contentWindow, dir);
+  syncPreview(after);
+  step = after ? after.i : Math.max(0, step + dir);
+  updateStep(after); loadNotes();
+  if (dir > 0 && !started) startTimer();
+  settle();
+}
+// 늦게 반응하는 덱(애니메이션 후 클래스 변경)을 위한 뒤늦은 보정
+function settle(){
+  clearTimeout(settle._t);
+  settle._t = setTimeout(() => {
+    const s = deckState(mirror.contentWindow);
+    if (s && s.i !== step) { step = s.i; updateStep(s); loadNotes(); syncPreview(s); }
+  }, 260);
+}
+// 미리보기는 항상 현재+1 — 마지막 장까지 갔다 와도 오프셋이 어긋나지 않게 맞춰준다
+function syncPreview(after){
+  if (!after) return;
+  const pw = preview.contentWindow, target = Math.min(after.i + 1, after.n - 1);
+  for (let guard = 0; guard < 60; guard++) {
+    const ps = deckState(pw);
+    if (!ps || ps.i === target) return;
+    sendKey(pw, target > ps.i ? 1 : -1);
+    const now = deckState(pw);
+    if (!now || now.i === ps.i) return;   // 더 이상 안 움직이면 포기
+  }
+}
+function updateStep(st){
+  const s = st || deckState(mirror.contentWindow);
+  const chip = $('#posChip');
+  chip.textContent = s ? `${s.i + 1} / ${s.n}` : `${step + 1} 장`;
+  chip.classList.toggle('at-end', !!(s && s.i >= s.n - 1));
+  $('#prevLabel').textContent = (s && s.i >= s.n - 1) ? 'Next — 마지막 장' : 'Next';
+  $('#noteFor').textContent = s ? `${s.i + 1} / ${s.n} 페이지` : `${step + 1} 페이지`;
+}
+function endFlash(dir){
+  flash(dir > 0 ? '마지막 슬라이드입니다.' : '첫 슬라이드입니다.');
+}
+function flash(msg){
+  const el = $('#flash');
+  el.textContent = msg;
+  clearTimeout(flash._t);
+  flash._t = setTimeout(() => { el.textContent = ''; }, 2200);
+}
+
+$('#nextBtn').onclick = function(){ this.blur(); nav(1); };
+$('#prevBtn').onclick = function(){ this.blur(); nav(-1); };
+$('#resync').onclick = function(){ this.blur(); mirror = writeFrame(mirror, 0); preview = writeFrame(preview, 1); flash('현재·다음 화면을 다시 그렸습니다.'); };
+
+// 청중 화면만 보정 — 이동 결과까지 알려준다(조용히 안 먹는 상황을 없앤다)
+function trimAudience(dir){
+  if (!audience || audience.closed) { flash('청중 화면이 열려 있지 않습니다.'); return; }
+  const before = deckState(audience), beforeSig = sig(audience);
+  sendKey(audience, dir);
+  const after = deckState(audience);
+  const moved = (before && after) ? after.i !== before.i : sig(audience) !== beforeSig;
+  if (moved) flash(`청중 화면만 ${dir > 0 ? '다음' : '이전'}으로 옮겼습니다${after ? ` (${after.i + 1} / ${after.n})` : ''}.`);
+  else flash(dir > 0 ? '청중 화면이 이미 마지막 장입니다.' : '청중 화면이 이미 첫 장입니다.');
+}
+$('#audNext').onclick = function(){ this.blur(); trimAudience(1); };
+$('#audPrev').onclick = function(){ this.blur(); trimAudience(-1); };
+
+window.addEventListener('keydown', e => {
+  const t = e.target.tagName;
+  if (t === 'TEXTAREA' || t === 'INPUT' || !deckHTML) return;
+  if (['ArrowRight','PageDown',' '].includes(e.key)) { e.preventDefault(); nav(1); }
+  else if (['ArrowLeft','PageUp'].includes(e.key)) { e.preventDefault(); nav(-1); }
+});
+
+/* ---------- 청중 창 ---------- */
+function showNotice(msg){ $('#noticeMsg').textContent = msg; $('#notice').hidden = false; }
+function openAudience(){
+  if (audience && !audience.closed) { audience.focus(); return; }  // 이미 열려 있으면 다시 그리지 않는다
+  // 크기 옵션을 줘야 Chrome 이 "새 탭" 이 아니라 독립 창으로 연다 —
+  // 탭으로 열리면 다른 모니터로 옮길 수 없고, 뒤에 숨어서 조작이 안 먹는 것처럼 보인다.
+  const w = Math.min(1280, Math.round(screen.availWidth * 0.62));
+  audience = window.open('', 'pt_audience',
+    `popup=yes,width=${w},height=${Math.round(w * 9 / 16)},left=60,top=60`);
+  if (!audience) {
+    showNotice('팝업이 차단되었습니다. 주소창 오른쪽 팝업 아이콘에서 “항상 허용”을 선택한 뒤 다시 열어주세요.');
+    return;
+  }
+  $('#notice').hidden = true;
+  writeDoc(audience);
+  hookAudience();
+  if (step > 0) setTimeout(() => replay(audience, step), 900);
+  audience.focus();
+}
+$('#openAud').onclick = function(){ this.blur(); openAudience(); };
+$('#noticeBtn').onclick = function(){ this.blur(); openAudience(); };
+
+function hookAudience(){
+  // 청중 창에서 직접 키를 누르면 발표자 콘솔도 따라오게 역방향 동기화
+  try {
+    audience.document.addEventListener('keydown', e => {
+      if (!e.isTrusted) return; // 우리가 보낸 합성 이벤트는 무시
+      const t = e.target.tagName;
+      if (t === 'INPUT' || t === 'TEXTAREA') return;
+      if (['ArrowRight','PageDown',' ','Enter'].includes(e.key)) nav(1, false);
+      else if (['ArrowLeft','PageUp'].includes(e.key)) nav(-1, false);
+    }, true);
+  } catch (_) {}
+  injectAudienceUX();
+}
+
+// 청중 창 편의 기능: F/버튼 전체화면 · 4초 커서 자동 숨김 · Wake Lock · 창 제목
+function injectAudienceUX(){
+  try {
+    const win = audience, d = win.document;
+    const st = d.createElement('style');
+    st.textContent =
+      '.pt-hidecursor,.pt-hidecursor *{cursor:none!important}' +
+      '#ptFsBtn{position:fixed;right:18px;bottom:18px;z-index:2147483647;' +
+      'font:600 16px/1 -apple-system,"Apple SD Gothic Neo",sans-serif;letter-spacing:.02em;' +
+      'padding:14px 20px;border-radius:10px;border:1px solid rgba(255,255,255,.22);' +
+      'background:rgba(10,12,15,.72);color:#fff;cursor:pointer;opacity:.92;' +
+      'transition:opacity .3s ease}' +
+      '#ptFsBtn:hover{opacity:1}' +
+      '#ptFsBtn.pt-fade{opacity:0;pointer-events:none}';
+    (d.head || d.documentElement).appendChild(st);
+    const btn = d.createElement('button');
+    btn.id = 'ptFsBtn'; btn.type = 'button';
+    btn.textContent = '⛶  전체화면 (F)';
+    btn.setAttribute('aria-label', '전체화면으로 보기');
+    d.body.appendChild(btn);
+    const goFs = () => {
+      const el = d.documentElement;
+      const fn = el.requestFullscreen || el.webkitRequestFullscreen;
+      if (fn) { const p = fn.call(el); if (p && p.catch) p.catch(() => {}); }
+    };
+    btn.onclick = goFs;
+    d.addEventListener('keydown', e => {
+      const t = e.target.tagName;
+      if (!e.isTrusted || t === 'INPUT' || t === 'TEXTAREA') return;
+      if ((e.key === 'f' || e.key === 'F') && !e.metaKey && !e.ctrlKey && !e.altKey) goFs();
+    }, true);
+    d.addEventListener('fullscreenchange', () => btn.classList.toggle('pt-fade', !!d.fullscreenElement));
+    // 4초 동안 마우스가 안 움직이면 커서·버튼 숨김
+    let idleT = null;
+    const poke = () => {
+      d.documentElement.classList.remove('pt-hidecursor');
+      if (!d.fullscreenElement) btn.classList.remove('pt-fade');
+      clearTimeout(idleT);
+      idleT = win.setTimeout(() => {
+        d.documentElement.classList.add('pt-hidecursor');
+        btn.classList.add('pt-fade');
+      }, 4000);
+    };
+    d.addEventListener('mousemove', poke);
+    poke();
+    // 화면 꺼짐 방지 (탭이 다시 보일 때 재획득)
+    const req = () => { try { win.navigator.wakeLock && win.navigator.wakeLock.request('screen').catch(() => {}); } catch (_) {} };
+    req();
+    d.addEventListener('visibilitychange', () => { if (!d.hidden) req(); });
+    win.setTimeout(() => { try { d.title = '[청중 화면] ' + deckName; } catch (_) {} }, 400);
+  } catch (_) {}
+}
+
+// 청중 창 연결 상태 — 보정 버튼도 같이 켜고 끈다
+setInterval(() => {
+  const on = !!(audience && !audience.closed);
+  const el = $('#audStatus');
+  el.textContent = on ? '● 청중 화면 연결됨' : '○ 청중 화면 없음';
+  el.classList.toggle('on', on);
+  $('#audNext').disabled = $('#audPrev').disabled = !on;
+  if (!on && audience) audience = null;
+}, 1000);
+
+/* ---------- 타이머 · 시계 ---------- */
+let acc = 0, runT = null;
+function fmt(ms){
+  const s = Math.floor(ms / 1000), h = Math.floor(s / 3600),
+        m = String(Math.floor(s / 60) % 60).padStart(2, '0'),
+        ss = String(s % 60).padStart(2, '0');
+  return h ? `${h}:${m}:${ss}` : `${m}:${ss}`;
+}
+function startTimer(){
+  started = true;
+  if (runT) return;
+  const t0 = Date.now() - acc;
+  runT = setInterval(() => { acc = Date.now() - t0; $('#timer').textContent = fmt(acc); }, 250);
+  $('#timerBtn').textContent = '⏸';
+  $('#timerBtn').setAttribute('aria-label', '타이머 일시정지');
+}
+function pauseTimer(){
+  clearInterval(runT); runT = null;
+  $('#timerBtn').textContent = '▶';
+  $('#timerBtn').setAttribute('aria-label', '타이머 시작');
+}
+$('#timerBtn').onclick = function(){ this.blur(); runT ? pauseTimer() : startTimer(); };
+$('#resetBtn').onclick = function(){ this.blur(); pauseTimer(); acc = 0; started = false; $('#timer').textContent = '00:00'; flash('타이머를 리셋했습니다.'); };
+const hhmm = new Intl.DateTimeFormat('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
+setInterval(() => { $('#clock').textContent = hhmm.format(new Date()); }, 1000);
+
+/* ---------- 페이지별 메모 ----------
+   localStorage 가 막힌 환경(샌드박스·시크릿 모드)에서도 발표 중에는 메모가 살아있도록
+   메모리 폴백을 둔다. 저장 실패로 콘솔 전체가 멈추는 일은 없어야 한다. */
+const mem = {};
+const store = {
+  get(k){ try { const v = localStorage.getItem(k); return v === null ? (k in mem ? mem[k] : null) : v; } catch (_) { return k in mem ? mem[k] : null; } },
+  set(k, v){ mem[k] = v; try { localStorage.setItem(k, v); } catch (_) {} }
+};
+const noteKey = n => `ptnotes:${deckName}:${n}`;
+$('#note').oninput = () => {
+  store.set(noteKey(step), $('#note').value);
+  const tag = $('#savedTag');
+  tag.classList.add('show');
+  clearTimeout($('#note')._t);
+  $('#note')._t = setTimeout(() => tag.classList.remove('show'), 1200);
+};
+function loadNotes(){
+  $('#note').value = store.get(noteKey(step)) || '';
+  $('#nextnote').textContent = store.get(noteKey(step + 1)) || '';
+  $('#savedTag').classList.remove('show');
+}
+
+/* ---------- 화면 꺼짐 방지 ---------- */
+function reqWakeLock(){
+  try { navigator.wakeLock && navigator.wakeLock.request('screen').catch(() => {}); } catch (_) {}
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden && deckHTML) reqWakeLock(); });
+
+/* ---------- 지난 발표 이어서 열기 ---------- */
+try {
+  const last = JSON.parse(store.get('ptlast') || 'null');
+  if (last && last.html) {
+    const b = $('#resumeBtn');
+    b.hidden = false;
+    b.textContent = '지난 발표 이어서 열기 — ' + last.name;
+    b.onclick = () => loadDeck(last.html, last.name);
+  }
+} catch (_) {}
+
+/* ---------- 미리보기 스케일 맞춤 ---------- */
+function fitStages(){
+  document.querySelectorAll('.stage').forEach(s => {
+    const f = s.querySelector('iframe');
+    if (!f) return;
+    const sc = Math.min(s.clientWidth / 1280, s.clientHeight / 720);
+    f.style.transform = `scale(${sc})`;
+    f.style.left = (s.clientWidth - 1280 * sc) / 2 + 'px';
+    f.style.top = (s.clientHeight - 720 * sc) / 2 + 'px';
+  });
+}
+window.addEventListener('resize', fitStages);
+</script>
+</body>
+</html>
