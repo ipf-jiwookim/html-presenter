@@ -432,7 +432,7 @@ let mirror = $('#mirror'), preview = $('#preview');   // 덱 로드마다 새 if
 function loadDeck(text, name){
   $('#notice').hidden = true; restoreNoticeBtn();   // 이전 덱의 알림·버튼 상태가 새 덱으로 새지 않게 초기화
   if (deckName) { clearTimeout(saveT); saveRecNow(); }   // 덱을 바꾸기 전에 이전 덱의 대기 중인 저장을 flush
-  deckHTML = text; deckName = name || 'deck.html'; step = 0;
+  deckHTML = text; deckName = name || 'deck.html'; step = 0; deadWarned = false;
   $('#deckname').textContent = deckName;
   document.title = deckName + ' — 발표자 콘솔';
   $('#dropzone').hidden = true;
@@ -451,6 +451,8 @@ function loadDeck(text, name){
     updateStep(); retryMigration();
     if (!Object.keys(rec.anchors).length && !Object.keys(rec.byIndex).length) offerRecovery();
   }, 1000);   // 덱이 첫 장을 늦게 표시하는 경우
+  if (/(?:<img[^>]+src|url\()\s*=?\s*["']?(?!https?:|data:|\/\/|#)[\w.][^"')>]*/i.test(deckHTML))
+    flash('이미지가 별도 파일로 분리된 자료입니다 — 단일 HTML로 합쳐야 이미지가 표시됩니다.');
   reqWakeLock();
   store.set('ptlast', JSON.stringify({ name: deckName, html: deckHTML }));
 }
@@ -563,7 +565,7 @@ function nav(dir, includeAudience = true){
   sendKey(mw, dir);
   const after = deckState(mw);
   const moved = (before && after) ? after.i !== before.i : sig(mw) !== beforeSig;
-  if (!moved) { endFlash(dir); settle(); return; }
+  if (!moved) { warnDeadDeck(dir); endFlash(dir); settle(); return; }
   sendKey(preview.contentWindow, dir);
   syncPreview(after);
   step = after ? after.i : Math.max(0, step + dir);
@@ -601,6 +603,16 @@ function updateStep(st){
 }
 function endFlash(dir){
   flash(dir > 0 ? '마지막 슬라이드입니다.' : '첫 슬라이드입니다.');
+}
+let deadWarned = false;
+// 첫 [다음]이 먹지 않으면 안내한다. 구조 감지 여부는 조건에 넣지 않는다 —
+// 클릭 전용 덱은 .slide 구조는 있으면서 키보드만 안 먹는 경우가 가장 흔하다.
+function warnDeadDeck(dir){
+  if (deadWarned || dir < 0 || step !== 0) return;
+  const s = deckState(mirror.contentWindow);
+  if (s && s.n <= 1) return;               // 한 장짜리는 넘길 곳이 없다
+  deadWarned = true;
+  showNotice('이 자료는 키보드 넘김에 반응하지 않는 것 같습니다. 자료를 만든 AI에게 "← → 방향키로 슬라이드가 넘어가게 해줘"라고 요청해 보세요.');
 }
 function flash(msg){
   const el = $('#flash');
