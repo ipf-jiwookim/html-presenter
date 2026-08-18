@@ -67,14 +67,16 @@ body{
 /* 계측부: 무엇을 세는 숫자인지 라벨로 못박는다 */
 .meter{display:flex;align-items:baseline;gap:7px;flex:none}
 .meter-k{font-family:var(--label);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6c7482}
-#clock{font-family:var(--data);font-size:16px;color:var(--ink-dim);font-variant-numeric:tabular-nums}
 #timer{
   font-family:var(--data);font-size:30px;font-weight:700;line-height:1;
   font-variant-numeric:tabular-nums;min-width:5.2ch;text-align:right;
 }
-#timer{cursor:pointer}
-#timer:focus-visible{outline:2px solid var(--next);outline-offset:2px;border-radius:4px}
-#goalVal{font-family:var(--data);font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;min-width:5.2ch;text-align:right}
+/* 목표는 클릭 대상이 눈에 보여야 한다 — 숨은 클릭(경과 숫자)은 아무도 못 찾았다 */
+#goalMeter{padding:5px 11px;border:1px dashed var(--rule);border-radius:8px;background:transparent;align-items:baseline}
+#goalMeter:hover{border-color:var(--next);border-style:solid;background:var(--raised)}
+#goalMeter.set{border-style:solid;border-color:var(--rule)}
+#goalVal{font-family:var(--data);font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;min-width:3ch;text-align:right}
+#goalMeter:not(.set) #goalVal{font-family:var(--ui);font-size:14px;font-weight:600;color:var(--ink-dim);min-width:0}
 #goalMeter.warn #goalVal,#goalMeter.warn .meter-k{color:var(--next)}
 #goalMeter.over #goalVal,#goalMeter.over .meter-k{color:var(--live)}
 #goalInput{width:5ch;font:700 20px var(--data);background:#0f1216;color:var(--ink);border:1px solid var(--next);border-radius:5px;padding:2px 5px;text-align:right}
@@ -146,12 +148,17 @@ main{
 
 /* ── 큐 시트(메모) ── */
 .cue{display:flex;flex-direction:column;flex:1;min-height:0;border-top:1px solid var(--rule)}
-.cue-head{display:flex;align-items:baseline;gap:10px;padding:10px 14px 6px}
+.cue-head{display:flex;align-items:center;gap:8px;padding:10px 14px 6px;flex-wrap:nowrap;white-space:nowrap}
 .cue-head h2{margin:0;font-family:var(--label);font-size:14px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--ink)}
 #noteFor{font-family:var(--data);font-size:12.5px;color:var(--next);font-variant-numeric:tabular-nums}
 #savedTag{margin-left:auto;font-size:12px;color:var(--ok);opacity:0;transition:opacity .25s ease}
 #savedTag.show{opacity:1}
 .cue-head button{padding:4px 9px;font-size:12.5px}
+/* "A− / A+" 로는 무슨 버튼인지 아무도 못 알아봤다 — 무엇을 조절하는지 말로 쓴다 */
+.fontgrp{display:flex;align-items:center;gap:4px;margin-left:auto;flex:none}
+.fontgrp .label{font-size:11px;letter-spacing:.1em;white-space:nowrap}
+#savedTag{margin-left:0;flex:none}
+.cue-head h2,.cue-head #noteFor{flex:none}
 #note{
   flex:1;min-height:110px;resize:none;margin:0 14px;padding:12px;
   background:#12151a;color:var(--ink);border:1px solid var(--rule);border-radius:8px;
@@ -221,16 +228,14 @@ input[type=file]{display:none}
   <span id="posChip" aria-live="polite">— / —</span>
   <span id="audStatus" aria-live="polite">청중 화면 없음</span>
   <div class="spacer"></div>
-  <span class="meter" title="지금 시각">
-    <span class="meter-k">현재 시각</span><time id="clock"></time>
-  </span>
   <span class="meter" title="발표를 시작한 뒤 흐른 시간">
-    <span class="meter-k">경과</span><span id="timer" role="button" tabindex="0"
-      title="클릭해 발표 배정 시간(분)을 설정" aria-label="경과 시간 · 클릭해 목표 시간 설정">00:00</span>
+    <span class="meter-k">경과</span><span id="timer">00:00</span>
   </span>
-  <span class="meter" id="goalMeter" hidden>
-    <span class="meter-k" id="goalLabel">남은</span><span id="goalVal">00:00</span>
-  </span>
+  <button type="button" id="goalMeter" class="meter"
+    title="발표에 배정된 시간(분)을 넣으면 남은 시간이 표시됩니다. 비우고 Enter 를 누르면 해제됩니다."
+    aria-label="발표 배정 시간 설정">
+    <span class="meter-k" id="goalLabel">목표</span><span id="goalVal">설정</span>
+  </button>
   <button id="timerBtn" class="icon-btn" aria-label="타이머 시작 또는 일시정지">▶</button>
   <button id="resetBtn" class="icon-btn" aria-label="타이머 리셋">↺</button>
   <button id="openAud" class="primary">청중 화면 열기</button>
@@ -278,8 +283,11 @@ input[type=file]{display:none}
         <h2>큐 시트</h2>
         <span id="noteFor"></span>
         <span id="savedTag" aria-live="polite">저장됨</span>
-        <button id="fontDown" class="ghost" aria-label="메모 글씨 작게">A−</button>
-        <button id="fontUp" class="ghost" aria-label="메모 글씨 크게">A+</button>
+        <span class="fontgrp">
+          <span class="label">글씨</span>
+          <button id="fontDown" class="ghost" title="메모 글씨 작게" aria-label="메모 글씨 작게">작게</button>
+          <button id="fontUp" class="ghost" title="메모 글씨 크게" aria-label="메모 글씨 크게">크게</button>
+        </span>
         <button id="exportBtn" class="ghost">내보내기</button>
       </div>
       <textarea id="note" aria-label="이 페이지 메모" spellcheck="false"
@@ -682,7 +690,8 @@ $('#audPrev').onclick = function(){ this.blur(); trimAudience(-1); };
 
 window.addEventListener('keydown', e => {
   const t = e.target.tagName;
-  if (t === 'TEXTAREA' || t === 'INPUT' || !deckHTML) return;
+  // 버튼에 포커스가 있을 때 Space 는 그 버튼을 누르는 동작이다 — 슬라이드까지 같이 넘기면 안 된다
+  if (t === 'TEXTAREA' || t === 'INPUT' || t === 'BUTTON' || t === 'SELECT' || !deckHTML) return;
   if (['ArrowRight','PageDown',' '].includes(e.key)) { e.preventDefault(); nav(1); }
   else if (['ArrowLeft','PageUp'].includes(e.key)) { e.preventDefault(); nav(-1); }
 });
@@ -812,9 +821,15 @@ $('#resetBtn').onclick = function(){ this.blur(); pauseTimer(); acc = 0; started
 let goalHit = false;
 function renderGoal(){
   const box = $('#goalMeter');
-  if (!rec.goalMin) { box.hidden = true; return; }
+  if (!rec.goalMin) {
+    // 숨기지 않는다 — 목표를 설정할 수 있다는 사실 자체가 보여야 한다
+    box.classList.remove('set', 'warn', 'over');
+    $('#goalLabel').textContent = '목표';
+    $('#goalVal').textContent = '설정';
+    return;
+  }
   const d = goalDisplay(rec.goalMin, acc);
-  box.hidden = false;
+  box.classList.add('set');
   $('#goalLabel').textContent = d.label;
   $('#goalVal').textContent = d.text;
   box.classList.toggle('warn', d.state === 'warn');
@@ -830,7 +845,7 @@ function renderGoal(){
 }
 function editGoal(){
   if ($('#goalInput')) return;
-  const holder = $('#timer').parentNode;
+  const holder = $('#goalMeter').parentNode;
   const input = document.createElement('input');
   input.id = 'goalInput';
   input.type = 'text';
@@ -855,11 +870,8 @@ function editGoal(){
   };
   input.onblur = () => done(false);
 }
-$('#timer').onclick = editGoal;
-$('#timer').onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); editGoal(); } };
+$('#goalMeter').onclick = function(){ this.blur(); editGoal(); };
 
-const hhmm = new Intl.DateTimeFormat('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
-setInterval(() => { $('#clock').textContent = hhmm.format(new Date()); }, 1000);
 
 /* ---------- 노트 레코드 ----------
    덱당 키 1개(ptnotes2:{deckName})에 앵커 노트·인덱스 폴백·미배정함·설정을 모아 둔다. */
