@@ -134,7 +134,9 @@ main{
 .cue-head{display:flex;align-items:baseline;gap:8px;padding:10px 14px 0;min-width:0}
 .cue-tools{display:flex;align-items:center;gap:6px;padding:8px 14px 6px;min-width:0}
 .cue-tools .spacer{flex:1}
-#noteMap{overflow:hidden;text-overflow:ellipsis;min-width:0}
+/* 부차 정보다. 크기·색을 안 줘서 body 기본 15px + 최대 밝기를 상속했고,
+   그 결과 섹션 제목보다 크고 밝았다. 속삭이는 크기로 내린다. */
+#noteMap{overflow:hidden;text-overflow:ellipsis;min-width:0;font-size:11.5px;color:#6c7482}
 .cue-head h2{margin:0;font-size:15px;font-weight:700;color:var(--ink)}
 #noteFor{font-family:var(--data);font-size:12.5px;color:var(--next);font-variant-numeric:tabular-nums}
 #savedTag{margin-left:auto;font-size:12px;color:var(--ok);opacity:0;transition:opacity .25s ease}
@@ -599,7 +601,7 @@ function serializeNotes(o){
   L.push(`# ${o.deckName} 발표 대본`);
   L.push(`<!-- html-presenter notes v1 · ${o.total}장, ${o.today} -->`);
   L.push('<!-- 이 파일은 자유롭게 고쳐도 되지만, slide 주석은 지우지 마세요.');
-  L.push('     다시 가져올 때 노트가 제자리를 찾는 표시입니다. -->');
+  L.push('     다시 가져올 때 대본이 제자리를 찾는 표시입니다. -->');
   (o.notes || []).forEach(n => {
     L.push('');
     L.push(`## ${n.index + 1} / ${o.total} · "${n.title || '(제목 없음)'}"`);
@@ -1334,7 +1336,7 @@ function offerRecovery(){
   });
   if (!best) return;
   const from = best.key.slice('ptnotes2:'.length);
-  showNotice(`「${from}」에 쓴 노트 ${best.count}개가 있습니다. 이 자료의 것으로 보입니다.`);
+  showNotice(`「${from}」에 쓴 대본 ${best.count}개가 있습니다. 이 자료의 것으로 보입니다.`);
   const btn = $('#noticeBtn');
   btn.hidden = false;
   btn.textContent = '불러오기';
@@ -1350,7 +1352,7 @@ function offerRecovery(){
     saveRecNow(); loadNotes(); refreshExportBtn();
     $('#notice').hidden = true;
     restoreNoticeBtn();
-    flash(`노트 ${best.count}개를 불러왔습니다.`);
+    flash(`대본 ${best.count}개를 불러왔습니다.`);
     showUndo();
   };
 }
@@ -1377,7 +1379,7 @@ function retryMigration(){
     else if (rec.anchors[a] !== incoming) {
       // 앵커 자리에 이미 다른 노트가 있으면 덮지 않고 미배정함으로 옮긴다
       rec.orphans = rec.orphans || [];
-      rec.orphans.push({ text: incoming, hint: `${Number(k) + 1}번째 장 · 앵커 승격 중 밀려난 노트` });
+      rec.orphans.push({ text: incoming, hint: `${Number(k) + 1}번째 장 · 앵커 승격 중 밀려난 대본` });
     }
     delete rec.byIndex[k];
     changed = true;
@@ -1507,7 +1509,7 @@ function exportNotes(){
   a.download = noteFileName(deckName, new Date().toISOString().slice(0, 10));
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-  flash(`노트 ${notes.length + orphansOut.length}개를 내보냈습니다.`);
+  flash(`대본 ${notes.length + orphansOut.length}개를 내보냈습니다.`);
 }
 $('#exportBtn').onclick = function(){ this.blur(); exportNotes(); };
 function refreshExportBtn(){
@@ -1556,7 +1558,7 @@ function renderOrphans(){
 /* ── 가져오기 · 되돌리기 ── */
 function importNotes(text){
   const parsed = parseNotes(text);
-  if (!parsed.ok) { flash('이 파일은 노트 내보내기 파일이 아닙니다.'); return; }
+  if (!parsed.ok) { flash('이 파일은 대본 내보내기 파일이 아닙니다.'); return; }
   const mine = deckAnchors();
   const fileKeys = Object.keys(parsed.anchors);
   // Task 9 와 동일하게 empty 계열 앵커(빈 슬라이드)는 겹침 판단에서 제외한다 —
@@ -1565,7 +1567,7 @@ function importNotes(text){
   const fileReal = fileKeys.filter(a => !a.startsWith('empty'));
   const mineReal = mine ? mine.filter(a => !a.startsWith('empty')) : null;
   if (mineReal && fileReal.length && anchorOverlap(fileReal, mineReal) < 0.2 &&
-      !confirm('다른 자료에서 내보낸 노트로 보입니다. 계속할까요?')) return;
+      !confirm('다른 자료에서 내보낸 대본으로 보입니다. 계속할까요?')) return;
 
   const clash = fileKeys.filter(a => rec.anchors[a] && rec.anchors[a] !== parsed.anchors[a]);
   let replace = true;
@@ -1581,8 +1583,8 @@ function importNotes(text){
     const idx = mine ? mine.indexOf(a) : -1;
     const hint = idx >= 0 ? `${idx + 1}번째 장` : '';
     if (existing && existing !== incoming) {
-      if (replace) { orphans.push({ text: existing, hint: (hint || '이전') + ' · 교체되기 전 노트' }); rec.anchors[a] = incoming; placed++; }
-      else orphans.push({ text: incoming, hint: (hint || '가져온 노트') + ' · 기존 유지로 밀려난 노트' });
+      if (replace) { orphans.push({ text: existing, hint: (hint || '이전') + ' · 교체되기 전 대본' }); rec.anchors[a] = incoming; placed++; }
+      else orphans.push({ text: incoming, hint: (hint || '가져온 대본') + ' · 기존 유지로 밀려난 대본' });
     } else if (mine && idx < 0) {
       orphans.push({ text: incoming, hint: '이 자료에서 위치를 찾지 못함' });
     } else { rec.anchors[a] = incoming; placed++; }
@@ -1592,7 +1594,7 @@ function importNotes(text){
   saveRecNow(); loadNotes(); refreshExportBtn();
 
   const left = rec.orphans.length;
-  flash(`노트 ${placed}개 연결${left ? ` · ${left}개는 미배정 노트함` : ''}.`);
+  flash(`대본 ${placed}개 연결${left ? ` · ${left}개는 미배정함` : ''}.`);
   showUndo();
 }
 function showUndo(){
