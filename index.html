@@ -385,7 +385,9 @@ function parseNotes(md){
   const out = { ok: false, anchors: {}, orphans: [] };
   if (!/html-presenter notes v1/.test(text)) return out;
   out.ok = true;
-  const re = /<!--\s*(?:slide:\s*([A-Za-z0-9#]+)|unassigned(?::\s*([^>]*?))?)\s*-->/g;
+  // 마커는 반드시 한 줄을 통째로 차지해야 인식한다(앞뒤로 공백만 허용) — 그래야 노트 본문
+  // 중간에 우연히(또는 의도적으로) 같은 문자열이 섞여 있어도 진짜 경계로 오인하지 않는다.
+  const re = /^[ \t]*<!--\s*(?:slide:\s*([A-Za-z0-9#]+)|unassigned(?::\s*([^>]*?))?)\s*-->[ \t]*$/gm;
   const marks = [];
   let m;
   while ((m = re.exec(text))) marks.push({ at: m.index, len: m[0].length, anchor: m[1] || null, hint: (m[2] || '').trim() });
