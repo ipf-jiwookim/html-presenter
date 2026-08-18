@@ -345,7 +345,41 @@ function migrateIndexed(oldMap, anchors){
   return out;
 }
 
-const PURE = { fnv1a, normTokens, slideAnchors, anchorOverlap, migrateIndexed };
+function sanitizeName(s){
+  const out = String(s == null ? '' : s).replace(/\.html?$/i, '').replace(/[\/\\:*?"<>|]+/g, '_').trim();
+  return out || 'deck';
+}
+function noteFileName(deckName, today){
+  return `${today}_${sanitizeName(deckName)}_노트.md`;
+}
+
+// 사람이 읽을 수 있는 대본 겸 가져오기용 파일. 연결의 근거는 slide 주석뿐이고
+// 페이지 번호는 참고값이다.
+function serializeNotes(o){
+  const L = [];
+  L.push(`# ${o.deckName} — 발표 노트`);
+  L.push(`<!-- html-presenter notes v1 · ${o.total}페이지 · ${o.today} -->`);
+  L.push('<!-- 이 파일은 자유롭게 고쳐도 되지만, slide 주석은 지우지 마세요 —');
+  L.push('     다시 가져올 때 노트가 제자리를 찾는 표시입니다. -->');
+  (o.notes || []).forEach(n => {
+    L.push('');
+    L.push(`## ${n.index + 1} / ${o.total} · "${n.title || '(제목 없음)'}"`);
+    L.push(`<!-- slide: ${n.anchor} -->`);
+    L.push(n.text);
+  });
+  if ((o.orphans || []).length) {
+    L.push('');
+    L.push('## 미배정');
+    o.orphans.forEach(p => {
+      L.push('');
+      L.push(`<!-- unassigned${p.hint ? ': ' + p.hint : ''} -->`);
+      L.push(p.text);
+    });
+  }
+  return L.join('\n') + '\n';
+}
+
+const PURE = { fnv1a, normTokens, slideAnchors, anchorOverlap, migrateIndexed, sanitizeName, noteFileName, serializeNotes };
 /* ==== PURE CORE END ==== */
 if (typeof window !== 'undefined') window.__pt = PURE;   // 브라우저 검증용 훅
 
