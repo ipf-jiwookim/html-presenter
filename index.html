@@ -763,14 +763,14 @@ function offerRecovery(){
   const mine = deckAnchors();
   if (!mine) return;
   const mineReal = mine.filter(a => !a.startsWith('empty'));
-  if (mineReal.length < 2) return;   // 실제 앵커 1개짜리 우연한 해시 일치로 오판하지 않도록 최소 2개 요구
+  if (!mineReal.length) return;
   let best = null;
   store.keys().forEach(k => {
     if (k.indexOf('ptnotes2:') !== 0 || k === recKey() || k.endsWith(':undo')) return;
     let other;
     try { other = JSON.parse(store.get(k)); } catch (_) { return; }
     const keys = Object.keys((other && other.anchors) || {}).filter(a => !a.startsWith('empty'));
-    if (keys.length < 2) return;   // 저장된 쪽도 실제 앵커 2개 미만이면 후보에서 제외
+    if (!keys.length) return;
     const score = anchorOverlap(keys, mineReal);
     if (score >= 0.4 && (!best || score > best.score)) best = { key: k, score, count: keys.length, rec: other };
   });
