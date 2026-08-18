@@ -379,7 +379,30 @@ function serializeNotes(o){
   return L.join('\n') + '\n';
 }
 
-const PURE = { fnv1a, normTokens, slideAnchors, anchorOverlap, migrateIndexed, sanitizeName, noteFileName, serializeNotes };
+// 섹션 경계는 주석 마커만 신뢰한다 — 사용자가 노트 본문에 ## 를 쓸 수 있기 때문.
+function parseNotes(md){
+  const text = String(md == null ? '' : md);
+  const out = { ok: false, anchors: {}, orphans: [] };
+  if (!/html-presenter notes v1/.test(text)) return out;
+  out.ok = true;
+  const re = /<!--\s*(?:slide:\s*([A-Za-z0-9#]+)|unassigned(?::\s*([^>]*?))?)\s*-->/g;
+  const marks = [];
+  let m;
+  while ((m = re.exec(text))) marks.push({ at: m.index, len: m[0].length, anchor: m[1] || null, hint: (m[2] || '').trim() });
+  marks.forEach((mk, k) => {
+    const to = k + 1 < marks.length ? marks[k + 1].at : text.length;
+    let body = text.slice(mk.at + mk.len, to);
+    // 다음 섹션의 제목 줄은 본문이 아니다. 우리가 만든 형태만 정확히 떼어낸다.
+    body = body.replace(/\n## (?:\d+ \/ \d+ · .*|미배정)[ \t]*\n?\s*$/, '');
+    body = body.replace(/^[ \t]*\n/, '').replace(/\s+$/, '');
+    if (!body) return;
+    if (mk.anchor) out.anchors[mk.anchor] = out.anchors[mk.anchor] ? out.anchors[mk.anchor] + '\n\n' + body : body;
+    else out.orphans.push({ text: body, hint: mk.hint });
+  });
+  return out;
+}
+
+const PURE = { fnv1a, normTokens, slideAnchors, anchorOverlap, migrateIndexed, sanitizeName, noteFileName, serializeNotes, parseNotes };
 /* ==== PURE CORE END ==== */
 if (typeof window !== 'undefined') window.__pt = PURE;   // 브라우저 검증용 훅
 
