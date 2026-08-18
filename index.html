@@ -285,9 +285,16 @@ input[type=file]{display:none}
 }
 .slot.filled::before{transform:scaleY(1)}
 .slot-main{flex:1;min-width:0}
-.slot-k{font-size:14.5px;font-weight:600;color:var(--ink)}
-.slot-k b{color:var(--live);font-weight:600}
-.slot-k .opt{color:#5a6270;font-weight:400}
+.slot-k{display:flex;align-items:center;gap:11px;font-size:14.5px;font-weight:600;color:var(--ink)}
+/* 뱃지는 알약이 아니라 버튼과 같은 반경 계열(5px)로 둔다 — 한 화면에 둥근 정도가 두 종류
+   생기지 않게(버튼 8~9px, 화면 14px, 슬롯 0). 한글이라 자간은 벌리지 않는다. */
+.badge{
+  flex:none;padding:3px 8px;border-radius:5px;line-height:1.35;
+  font-size:11.5px;font-weight:700;
+  background:#232832;border:1px solid #343b46;color:#9ba3af;
+}
+/* 필수는 이 화면의 유일한 강조색을 쓰되 면으로 채우지 않는다 — 꽉 찬 빨강은 [발표 시작] 과 경쟁한다 */
+.badge.req{background:#2c1613;border-color:#5e2b23;color:#ff7a6c}
 .slot-v{margin-top:4px;font-family:var(--data);font-size:12.5px;color:#5a6270;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .slot.filled .slot-v{color:var(--ink)}
@@ -415,14 +422,14 @@ input[type=file]{display:none}
         <div class="setup">
           <div class="slot" id="slotDeck">
             <div class="slot-main">
-              <div class="slot-k">발표 자료 <b>필수</b></div>
+              <div class="slot-k">발표 자료<span class="badge req">필수</span></div>
               <div class="slot-v" id="deckPicked">HTML 파일</div>
             </div>
             <button id="pickBtn">고르기</button>
           </div>
           <div class="slot" id="slotNotes">
             <div class="slot-main">
-              <div class="slot-k">발표 대본 <span class="opt">선택</span></div>
+              <div class="slot-k">발표 대본<span class="badge">선택</span></div>
               <div class="slot-v" id="notesPicked">내보낸 대본 파일 (.md)</div>
             </div>
             <button id="pickNotesBtn">고르기</button>
