@@ -241,26 +241,42 @@ input[type=file]{display:none}
   @keyframes drift2{to{transform:translate3d(-4vmax,-5vmax,0) scale(1.12)}}
 }
 .patch{position:relative}
-#dropzone.over .patch{border-color:var(--next);box-shadow:0 0 0 1px var(--next), 0 24px 60px rgba(0,0,0,.5)}
+#dropzone.over .patch{border-color:var(--next);box-shadow:0 0 0 1px var(--next), 0 30px 70px -20px rgba(0,0,0,.7)}
 .patch{
-  width:min(620px,100%);border:1px solid var(--rule);border-radius:14px;overflow:hidden;
-  background:linear-gradient(180deg,#171a20,#131519);box-shadow:0 24px 60px rgba(0,0,0,.45);
-  transition:border-color .18s ease, box-shadow .18s ease;
+  width:min(1000px,100%);border:1px solid var(--rule);border-radius:16px;overflow:hidden;
+  background:linear-gradient(180deg,#181b22,#12141a);
+  /* 배경 색조로 기울인 그림자 + 위쪽 1px 하이라이트. 네온 대신 재질감으로 띄운다 */
+  box-shadow:0 1px 0 rgba(255,255,255,.04) inset, 0 30px 70px -20px rgba(0,0,0,.7);
+  transition:border-color .18s ease, box-shadow .18s ease, transform .18s ease;
 }
-.patch-body{padding:30px 30px 26px}
+.patch-body{
+  display:grid;grid-template-columns:minmax(0,1.02fr) minmax(0,.98fr);
+  gap:38px;align-items:center;padding:38px 38px 34px;
+}
 .patch-left{min-width:0}
+/* 웹폰트를 못 쓰는 제약(오프라인 강의장) 이라 서체로는 멋을 낼 수 없다.
+   그래서 스케일·굵기·자간으로만 위계를 만든다 */
 .patch-left h1{
-  margin:0 0 10px;font-family:var(--ui);font-size:clamp(26px,3.4vw,36px);font-weight:800;
-  letter-spacing:-.02em;color:var(--ink);text-wrap:balance;
+  margin:0 0 12px;font-size:clamp(30px,3.6vw,44px);font-weight:800;
+  letter-spacing:-.035em;line-height:1.04;color:var(--ink);text-wrap:balance;
 }
-.patch-left p{margin:0 0 20px;max-width:46ch;font-size:14px;line-height:1.75;color:var(--ink-dim);text-wrap:pretty}
+.patch-left p{margin:0 0 26px;max-width:32ch;font-size:14.5px;line-height:1.7;color:var(--ink-dim);text-wrap:pretty}
 
 .setup{display:flex;flex-direction:column;gap:9px}
 .slot{
   display:flex;align-items:center;gap:14px;padding:13px 15px;
   border:1px solid var(--rule);border-radius:10px;background:#12151a;min-width:0;
-  transition:border-color .18s ease, background .18s ease;
+  position:relative;overflow:hidden;
+  transition:border-color .18s ease, background .18s ease, transform .18s ease;
 }
+/* 채워졌다는 걸 왼쪽 심지로 말한다. 점이 아니라 슬롯 자체의 상태 표시다 */
+.slot::before{
+  content:'';position:absolute;left:0;top:0;bottom:0;width:2px;
+  background:var(--ok);transform:scaleY(0);transform-origin:50% 50%;
+  transition:transform .28s cubic-bezier(.16,1,.3,1);
+}
+.slot.filled::before{transform:scaleY(1)}
+.slot:hover{border-color:#3c434f}
 .slot.filled{border-color:rgba(53,201,138,.55);background:#111a16}
 .slot-main{flex:1;min-width:0}
 .slot-k{font-size:14px;font-weight:600;color:var(--ink)}
@@ -271,23 +287,42 @@ input[type=file]{display:none}
 .slot.filled .slot-v{color:var(--ink)}
 .slot button{flex:none}
 
-.patch-go{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:20px}
+.patch-go{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:24px}
+
+.patch-right{min-width:0}
+.well{flex:none;aspect-ratio:16/9;border-radius:12px}
+.well-empty{
+  position:absolute;inset:11px;margin:0;display:grid;place-items:center;text-align:center;
+  border:1px dashed #2b313b;border-radius:9px;
+  font-size:13px;line-height:1.75;color:#525a68;
+  transition:opacity .3s ease;
+}
+.well.filled .well-empty{opacity:0}
+#thumb{opacity:0}
+@media (prefers-reduced-motion: no-preference){ #thumb{transition:opacity .4s ease} }
+#thumb[hidden]{display:none}
 #startBtn{padding:13px 26px;font-size:15px;letter-spacing:.01em}
 #startBtn:disabled{background:var(--raised);border-color:var(--rule);color:#5a6270;box-shadow:none}
 .patch.armed #startBtn{box-shadow:0 6px 18px rgba(0,0,0,.4)}
 #resumeBtn{background:transparent;border-color:var(--rule);color:var(--next);padding:9px 14px;font-size:12.5px;
   max-width:34ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
-@media (max-width:760px){
-  .patch-body{padding:22px 20px 20px}
+@media (max-width:880px){
+  .patch-body{grid-template-columns:minmax(0,1fr);gap:26px;padding:28px 24px 24px}
+  .patch-left h1{font-size:clamp(27px,7vw,34px)}
+  .patch-left p{max-width:none}
+}
+@media (max-width:520px){
+  .patch-body{padding:22px 18px 20px}
   .slot{flex-wrap:wrap}
 }
 /* 한 번만 순서대로 등장한다. 발표가 시작되면 이 화면은 사라지므로 여기서만 허용한다 */
 @media (prefers-reduced-motion: no-preference){
-  .patch-left h1,.patch-left p,.setup,.patch-go{animation:patchIn .5s cubic-bezier(.16,1,.3,1) both}
+  .patch-left h1,.patch-left p,.setup,.patch-go,.patch-right{animation:patchIn .5s cubic-bezier(.16,1,.3,1) both}
   .patch-left p{animation-delay:.06s}
   .setup{animation-delay:.12s}
   .patch-go{animation-delay:.2s}
+  .patch-right{animation-delay:.1s}
   @keyframes patchIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
 }
 
@@ -381,6 +416,15 @@ input[type=file]{display:none}
         <div class="patch-go">
           <button id="startBtn" class="primary" disabled>발표 시작</button>
           <button id="resumeBtn" hidden></button>
+        </div>
+      </div>
+
+      <!-- 고른 자료의 1장을 그대로 띄운다. 콘솔의 모니터와 같은 재질(.stage)을 써서
+           시작 화면이 본체와 이어지게 한다. 가짜 미리보기가 아니라 실제 파일이다. -->
+      <div class="patch-right">
+        <div class="stage well" id="deckWell">
+          <p class="well-empty" id="wellEmpty">고른 발표 자료의<br>첫 화면이 여기 보입니다</p>
+          <iframe id="thumb" title="고른 발표 자료의 첫 화면" hidden></iframe>
         </div>
       </div>
     </div>
@@ -650,14 +694,43 @@ window.__ptLoad = loadDeck; // 프로그래매틱 로드용(테스트/확장)
 let staged = { deck: null, notes: null };
 function renderSetup(){
   const ready = !!staged.deck;                            // 자료 없이는 시작할 수 없다
-  $('#deckPicked').textContent = staged.deck ? staged.deck.name : '대기 중 · HTML 파일';
-  $('#notesPicked').textContent = staged.notes ? staged.notes.name : '대기 중 · 내보낸 노트(.md)';
+  $('#deckPicked').textContent = staged.deck ? staged.deck.name : 'HTML 파일';
+  $('#notesPicked').textContent = staged.notes ? staged.notes.name : '내보낸 대본 파일 (.md)';
   $('#slotDeck').classList.toggle('filled', ready);
   $('#slotNotes').classList.toggle('filled', !!staged.notes);
   $('#startBtn').disabled = !ready;
   $('#startBtn').title = ready ? '' : '발표 자료를 먼저 불러와 주세요';
-  // ON AIR 표시등 — 준비되면 켜진다
   $('.patch').classList.toggle('armed', ready);
+}
+
+/* 고른 자료의 1장을 웰에 띄운다. 파일을 고른 게 맞는지 눈으로 확인시켜 주는 것이
+   이 화면에서 가장 쓸모 있는 그림이고, 만들어 낸 장식이 아니라 실제 파일이다.
+   iframe 은 매번 새로 만든다 — document.write 는 Window 를 재사용하므로 앞 덱이 남긴
+   전역 let/const 와 겹치면 다음 덱 스크립트가 통째로 죽는다(freshFrame 주석 참고). */
+function renderDeckThumb(){
+  const well = $('#deckWell');
+  const old = $('#thumb');
+  const f = document.createElement('iframe');
+  f.id = 'thumb'; f.title = old.title;
+  well.replaceChild(f, old);
+  if (!staged.deck) { well.classList.remove('filled'); f.hidden = true; return; }
+  f.hidden = false;
+  const d = f.contentWindow.document;
+  d.open(); d.write(staged.deck.text); d.close();
+  fitStages();
+  well.classList.add('filled');
+  // 덱이 자기 배경을 칠할 때까지 한 박자 기다렸다가 띄운다(흰 배경 플래시 가림)
+  setTimeout(() => { f.style.opacity = '1'; }, 120);
+}
+// 발표를 시작하기 전에 썸네일 Window 를 버린다. 남겨 두면 본 덱과 같은 문서를
+// 두 벌 돌리게 되고, 발표 직전에 쓸 이유가 없는 CPU 다.
+function dropDeckThumb(){
+  const old = $('#thumb');
+  if (!old) return;
+  const f = document.createElement('iframe');
+  f.id = 'thumb'; f.title = old.title; f.hidden = true;
+  old.parentNode.replaceChild(f, old);
+  $('#deckWell').classList.remove('filled');
 }
 function stageFile(file, done){
   const r = new FileReader();
@@ -666,6 +739,7 @@ function stageFile(file, done){
 }
 function startPresenting(){
   if (!staged.deck) return;
+  dropDeckThumb();
   loadDeck(staged.deck.text, staged.deck.name);
   if (staged.notes) setTimeout(() => importNotes(staged.notes.text), 300);   // 앵커가 준비된 뒤 붙인다
 }
@@ -681,7 +755,7 @@ function handleFile(file){
   }
   stageFile(file, text => {
     if (isMd) staged.notes = { text, name: file.name };
-    else staged.deck = { text, name: file.name };
+    else { staged.deck = { text, name: file.name }; renderDeckThumb(); }
     renderSetup();
   });
 }
