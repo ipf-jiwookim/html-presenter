@@ -274,7 +274,7 @@ input[type=file]{display:none}
       <span class="dot" aria-hidden="true"></span>
       <span class="name" id="prevLabel">Next</span>
       <div class="spacer"></div>
-      <button id="resync" class="ghost" title="미리보기가 청중 화면과 어긋났을 때">재동기화</button>
+      <button id="resync" title="내 화면(현재·다음)만 처음부터 다시 그립니다 — 청중 화면은 건드리지 않습니다">내 화면 다시 그리기</button>
     </div>
     <div class="stage"><iframe id="preview" title="다음 슬라이드"></iframe></div>
 
@@ -309,7 +309,7 @@ input[type=file]{display:none}
   <span id="flash" role="status"></span>
   <div class="spacer"></div>
   <div class="trim">
-    <span class="label">청중 화면만 보정</span>
+    <span class="label" id="trimLabel">청중 화면만 보정</span>
     <button id="audPrev" class="icon-btn" aria-label="청중 화면만 이전으로" disabled>◀</button>
     <button id="audNext" class="icon-btn" aria-label="청중 화면만 다음으로" disabled>▶</button>
   </div>
@@ -544,13 +544,15 @@ function writeFrame(iframe, ahead){
   fitStages();
   return f;
 }
+let replaying = 0;   // 복원 중에는 자동 정렬이 끼어들지 않게 한다
 function replay(w, n){
   let i = 0;
+  replaying++;
   const t = setInterval(() => {
     sendKey(w, 1);
     // 복원이 끝나면 미리보기 오프셋을 다시 맞춘다 — 복원 중에 사용자가 먼저 넘기면
     // 뒤늦게 도착한 복원 키가 미리보기를 한 장 더 밀어버리기 때문.
-    if (++i >= n) { clearInterval(t); syncPreview(deckState(mirror.contentWindow)); }
+    if (++i >= n) { clearInterval(t); replaying--; syncPreview(deckState(mirror.contentWindow)); }
   }, 80);
 }
 
@@ -788,14 +790,45 @@ function injectAudienceUX(){
   } catch (_) {}
 }
 
-// 청중 창 연결 상태 — 보정 버튼도 같이 켜고 끈다
+// 청중 화면 자동 정렬 — 발표자가 어긋남을 눈치채고 버튼을 누르는 일이 없어야 한다.
+// 위치를 읽을 수 있는 자료에서만 동작한다(읽을 수 없으면 맞출 기준이 없다).
+//
+// 주의: presenter-mode 처럼 인덱스를 대입하는 게 아니라 키를 보내야 하므로, 잘못된 보정은
+// 화면을 오히려 망친다. 그래서 같은 어긋남이 두 번 연속 관측될 때만(=약 1초 이상 안정적으로
+// 틀려 있을 때만) 손댄다 — 애니메이션 도중 샘플링해 오판하는 것을 막는 장치다.
+let audDrift = null;
+function autoSyncAudience(){
+  if (replaying || !audience || audience.closed) { audDrift = null; return; }
+  const a = deckState(audience);
+  if (!a) { audDrift = null; return; }              // 위치를 못 읽는 자료 — 자동 정렬 불가
+  const target = Math.min(Math.max(step, 0), a.n - 1);
+  if (a.i === target) { audDrift = null; return; }
+  if (audDrift !== a.i) { audDrift = a.i; return; } // 첫 관측은 흘린다(전환 중일 수 있음)
+  audDrift = null;
+  let cur = a.i;
+  for (let guard = 0; guard < 60 && cur !== target; guard++) {
+    sendKey(audience, target > cur ? 1 : -1);
+    const now = deckState(audience);
+    if (!now || now.i === cur) break;               // 더 안 움직이면 포기(무한 시도 방지)
+    cur = now.i;
+  }
+  if (cur === target) flash(`청중 화면이 어긋나 자동으로 맞췄습니다 (${target + 1}번째 장).`);
+}
+
+// 청중 창 연결 상태 — 자동 정렬이 가능한 자료에서는 수동 보정 버튼을 잠근다
 setInterval(() => {
   const on = !!(audience && !audience.closed);
   const el = $('#audStatus');
   el.textContent = on ? '● 청중 화면 연결됨' : '○ 청중 화면 없음';
   el.classList.toggle('on', on);
-  $('#audNext').disabled = $('#audPrev').disabled = !on;
   if (!on && audience) audience = null;
+  autoSyncAudience();
+  const auto = on && !!deckState(audience);
+  $('#audNext').disabled = $('#audPrev').disabled = !on || auto;
+  $('#trimLabel').textContent = auto ? '청중 화면 자동 정렬' : '청중 화면만 보정';
+  $('#trimLabel').title = auto
+    ? '이 자료는 위치를 읽을 수 있어 어긋나면 자동으로 맞춰집니다'
+    : '이 자료는 위치를 읽을 수 없어 자동 정렬이 안 됩니다 — 어긋나면 직접 맞춰주세요';
 }, 1000);
 
 /* ---------- 타이머 · 시계 ---------- */
