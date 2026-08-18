@@ -1038,6 +1038,7 @@ function importNotes(text){
 }
 function showUndo(){
   const el = $('#flash');
+  clearTimeout(flash._t);  // 직전 flash()가 예약한 2.2초 자동 지우기가 이 버튼까지 지우지 못하게 취소
   const btn = document.createElement('button');
   btn.textContent = '가져오기 되돌리기';
   btn.className = 'ghost';
