@@ -72,6 +72,16 @@ body{
   font-family:var(--data);font-size:30px;font-weight:700;line-height:1;
   font-variant-numeric:tabular-nums;min-width:5.2ch;text-align:right;
 }
+#timer{cursor:pointer}
+#timer:focus-visible{outline:2px solid var(--next);outline-offset:2px;border-radius:4px}
+#goalVal{font-family:var(--data);font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;min-width:5.2ch;text-align:right}
+#goalMeter.warn #goalVal,#goalMeter.warn .meter-k{color:var(--next)}
+#goalMeter.over #goalVal,#goalMeter.over .meter-k{color:var(--live)}
+#goalInput{width:5ch;font:700 20px var(--data);background:#0f1216;color:var(--ink);border:1px solid var(--next);border-radius:5px;padding:2px 5px;text-align:right}
+@media (prefers-reduced-motion: no-preference){
+  #goalMeter.pulse #goalVal{animation:goalHit .5s ease-out 2}
+  @keyframes goalHit{50%{transform:scale(1.18)}}
+}
 
 /* ── 버튼 ── */
 button{
@@ -215,7 +225,11 @@ input[type=file]{display:none}
     <span class="meter-k">현재 시각</span><time id="clock"></time>
   </span>
   <span class="meter" title="발표를 시작한 뒤 흐른 시간">
-    <span class="meter-k">경과</span><span id="timer" aria-label="경과 시간">00:00</span>
+    <span class="meter-k">경과</span><span id="timer" role="button" tabindex="0"
+      title="클릭해 발표 배정 시간(분)을 설정" aria-label="경과 시간 · 클릭해 목표 시간 설정">00:00</span>
+  </span>
+  <span class="meter" id="goalMeter" hidden>
+    <span class="meter-k" id="goalLabel">남은</span><span id="goalVal">00:00</span>
   </span>
   <button id="timerBtn" class="icon-btn" aria-label="타이머 시작 또는 일시정지">▶</button>
   <button id="resetBtn" class="icon-btn" aria-label="타이머 리셋">↺</button>
@@ -779,7 +793,7 @@ function startTimer(){
   started = true;
   if (runT) return;
   const t0 = Date.now() - acc;
-  runT = setInterval(() => { acc = Date.now() - t0; $('#timer').textContent = fmt(acc); }, 250);
+  runT = setInterval(() => { acc = Date.now() - t0; $('#timer').textContent = fmt(acc); renderGoal(); }, 250);
   $('#timerBtn').textContent = '⏸';
   $('#timerBtn').setAttribute('aria-label', '타이머 일시정지');
 }
@@ -789,7 +803,57 @@ function pauseTimer(){
   $('#timerBtn').setAttribute('aria-label', '타이머 시작');
 }
 $('#timerBtn').onclick = function(){ this.blur(); runT ? pauseTimer() : startTimer(); };
-$('#resetBtn').onclick = function(){ this.blur(); pauseTimer(); acc = 0; started = false; $('#timer').textContent = '00:00'; flash('타이머를 리셋했습니다.'); };
+$('#resetBtn').onclick = function(){ this.blur(); pauseTimer(); acc = 0; started = false; goalHit = false; $('#timer').textContent = '00:00'; renderGoal(); flash('타이머를 리셋했습니다.'); };
+
+let goalHit = false;
+function renderGoal(){
+  const box = $('#goalMeter');
+  if (!rec.goalMin) { box.hidden = true; return; }
+  const d = goalDisplay(rec.goalMin, acc);
+  box.hidden = false;
+  $('#goalLabel').textContent = d.label;
+  $('#goalVal').textContent = d.text;
+  box.classList.toggle('warn', d.state === 'warn');
+  box.classList.toggle('over', d.state === 'over');
+  // 알림은 도달 순간 1회만 — 계속 깜빡이면 그게 더 방해다. 소리는 쓰지 않는다
+  // (노트북 오디오가 강의장 스피커에 연결된 경우 청중에게 들린다).
+  if (d.state === 'over' && !goalHit) {
+    goalHit = true;
+    flash('목표 시간에 도달했습니다.');
+    box.classList.add('pulse');
+    setTimeout(() => box.classList.remove('pulse'), 1200);
+  }
+}
+function editGoal(){
+  if ($('#goalInput')) return;
+  const holder = $('#timer').parentNode;
+  const input = document.createElement('input');
+  input.id = 'goalInput';
+  input.type = 'text';
+  input.inputMode = 'numeric';
+  input.setAttribute('aria-label', '발표 배정 시간(분). 비우면 해제');
+  input.value = rec.goalMin || '';
+  input.placeholder = '분';
+  holder.append(input);
+  input.focus(); input.select();
+  const done = commit => {
+    if (commit) {
+      const v = validateGoal(input.value);
+      if (v.ok === true) { rec.goalMin = v.min; goalHit = false; saveRec(); flash(`목표 ${v.min}분으로 설정했습니다.`); }
+      else if (v.ok === 'clear') { delete rec.goalMin; goalHit = false; saveRec(); flash('목표 시간을 해제했습니다.'); }
+      else flash('1~600 사이의 분 단위 숫자를 입력해 주세요.');
+    }
+    input.remove(); renderGoal();
+  };
+  input.onkeydown = e => {
+    if (e.key === 'Enter') { e.preventDefault(); done(true); }
+    else if (e.key === 'Escape') { e.preventDefault(); done(false); }
+  };
+  input.onblur = () => done(false);
+}
+$('#timer').onclick = editGoal;
+$('#timer').onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); editGoal(); } };
+
 const hhmm = new Intl.DateTimeFormat('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
 setInterval(() => { $('#clock').textContent = hhmm.format(new Date()); }, 1000);
 
@@ -934,6 +998,7 @@ function loadNotes(){
   applyFontSize();
   renderOrphans();
   refreshExportBtn();
+  renderGoal();
 }
 const FONT_STEPS = [13, 16, 20, 24, 28];
 function applyFontSize(){
