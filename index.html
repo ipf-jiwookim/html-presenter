@@ -957,13 +957,19 @@ function offerRecovery(){
   btn.hidden = false;
   btn.textContent = '불러오기';
   btn.onclick = () => {
+    // 배너를 띄운 시점엔 비어 있었어도 클릭은 한참 뒤에 올 수 있다(그 사이 쓴 노트).
+    // 미배정함도 비어 있는지는 애초에 검사하지 않는다. 그래서 가져오기와 같은 계약으로
+    // 되돌리기 스냅샷을 남기고, 미배정함은 교체하지 않고 이어 붙인다.
+    store.set(recKey() + ':undo', JSON.stringify(rec));
+    const keptOrphans = (rec.orphans || []).slice();
     rec.anchors = Object.assign({}, best.rec.anchors);
     rec.byIndex = Object.assign({}, best.rec.byIndex || {});
-    rec.orphans = (best.rec.orphans || []).slice();
-    saveRecNow(); loadNotes();
+    rec.orphans = keptOrphans.concat(best.rec.orphans || []);
+    saveRecNow(); loadNotes(); refreshExportBtn();
     $('#notice').hidden = true;
     restoreNoticeBtn();
     flash(`노트 ${best.count}개를 불러왔습니다.`);
+    showUndo();
   };
 }
 // 알림 바 버튼을 기본(청중 화면 열기)으로 되돌린다
