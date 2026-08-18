@@ -17,3 +17,26 @@ test('normTokens: 소문자화·구두점 제거, 숫자 포함 토큰은 버린
   assert.deepEqual(PURE.normTokens(''), []);
   assert.deepEqual(PURE.normTokens(null), []);
 });
+
+test('slideAnchors: 장마다 다른 지문, 재실행 시 동일', () => {
+  const texts = ['알파 내용', '베타 내용', '감마 내용', '델타 내용', '엡실론 내용'];
+  const a = PURE.slideAnchors(texts);
+  assert.equal(new Set(a).size, 5);
+  assert.deepEqual(a, PURE.slideAnchors(texts));
+});
+
+test('slideAnchors: 공통 푸터는 지문에 영향을 주지 않는다 (5장 이상)', () => {
+  const foot = 'AI 깐부 SHOWCASE';
+  const base = ['알파', '베타', '감마', '델타', '엡실론'].map(t => `${t} 내용 ${foot} P.1 / 5`);
+  const grown = ['알파', '베타', '감마', '델타', '엡실론', '신규'].map(t => `${t} 내용 ${foot} P.1 / 6`);
+  const a = PURE.slideAnchors(base);
+  const b = PURE.slideAnchors(grown);
+  // 장이 늘어도 기존 5장의 지문은 그대로여야 한다
+  assert.deepEqual(a, b.slice(0, 5));
+});
+
+test('slideAnchors: 5장 미만이면 스톱워드를 만들지 않아 지문이 살아남는다', () => {
+  const a = PURE.slideAnchors(['공통 알파', '공통 베타', '공통 감마']);
+  assert.equal(new Set(a).size, 3);
+  assert.ok(!a.includes('empty'));
+});

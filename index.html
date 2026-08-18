@@ -301,7 +301,29 @@ function normTokens(text){
     .filter(t => t && !/\p{N}/u.test(t));
 }
 
-const PURE = { fnv1a, normTokens };
+// 슬라이드 텍스트 배열 → 앵커 배열. 첫 등장은 접미사 없이, 같은 지문의 n번째는 `#n`.
+function slideAnchors(texts){
+  const per = (texts || []).map(normTokens);
+  const stop = new Set();
+  // 5장 미만에서는 공통 토큰 제거를 건너뛴다 — 짧은 덱은 본문 단어까지 공통으로 잡혀
+  // 지문이 전멸한다.
+  if (per.length >= 5) {
+    const count = new Map();
+    per.forEach(tokens => new Set(tokens).forEach(t => count.set(t, (count.get(t) || 0) + 1)));
+    const limit = per.length * 0.8;
+    count.forEach((c, t) => { if (c >= limit) stop.add(t); });
+  }
+  const seen = new Map();
+  return per.map(tokens => {
+    const body = tokens.filter(t => !stop.has(t)).join(' ');
+    const base = body ? fnv1a(body) : 'empty';
+    const n = (seen.get(base) || 0) + 1;
+    seen.set(base, n);
+    return n === 1 ? base : `${base}#${n}`;
+  });
+}
+
+const PURE = { fnv1a, normTokens, slideAnchors };
 /* ==== PURE CORE END ==== */
 if (typeof window !== 'undefined') window.__pt = PURE;   // 브라우저 검증용 훅
 
