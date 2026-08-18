@@ -852,7 +852,7 @@ function editGoal(){
   input.onblur = () => done(false);
 }
 $('#timer').onclick = editGoal;
-$('#timer').onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); editGoal(); } };
+$('#timer').onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); editGoal(); } };
 
 const hhmm = new Intl.DateTimeFormat('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
 setInterval(() => { $('#clock').textContent = hhmm.format(new Date()); }, 1000);
