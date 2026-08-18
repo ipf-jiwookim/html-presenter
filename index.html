@@ -278,6 +278,23 @@ input[type=file]{display:none}
 
 <script>
 'use strict';
+/* ==== PURE CORE START ==== */
+/* DOM 을 만지지 않는 순수 로직만 둔다. test/core.mjs 가 이 구역을 그대로 읽어 실행하므로
+   여기에 document·window 참조를 넣으면 테스트가 깨진다. */
+
+function fnv1a(str){
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return (h >>> 0).toString(16).padStart(8, '0').slice(-6);
+}
+
+const PURE = { fnv1a };
+/* ==== PURE CORE END ==== */
+if (typeof window !== 'undefined') window.__pt = PURE;   // 브라우저 검증용 훅
+
 const $ = s => document.querySelector(s);
 let deckHTML = '', deckName = '', step = 0, audience = null, started = false;
 let mirror = $('#mirror'), preview = $('#preview');   // 덱 로드마다 새 iframe 으로 교체된다
