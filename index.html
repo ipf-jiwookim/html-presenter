@@ -484,9 +484,10 @@ function loadDeck(text, name){
   retryMigration();
   updateStep(); loadNotes();
   setTimeout(() => {
-    updateStep(); retryMigration();
+    updateStep(); retryMigration(); resettleAnchors();
     if (!Object.keys(rec.anchors).length && !Object.keys(rec.byIndex).length) offerRecovery();
   }, 1000);   // 덱이 첫 장을 늦게 표시하는 경우
+  setTimeout(resettleAnchors, 2500);   // 더 느리게 정착하는 덱을 위한 두 번째 체크포인트
   if (/(?:<img[^>]+src|url\()\s*=?\s*["']?(?!https?:|data:|\/\/|#)[\w.][^"')>]*/i.test(deckHTML))
     flash('이미지가 별도 파일로 분리된 자료입니다 — 단일 HTML로 합쳐야 이미지가 표시됩니다.');
   reqWakeLock();
@@ -979,6 +980,28 @@ function retryMigration(){
   Object.keys(rec.byIndex).forEach(k => {
     const a = anchors[Number(k)];
     if (a) { rec.anchors[a] = rec.byIndex[k]; delete rec.byIndex[k]; changed = true; }
+  });
+  if (changed) saveRecNow();
+}
+
+// 덱 텍스트가 초기 렌더 이후에도 계속 바뀌는 경우(타이핑 애니메이션·지연 렌더링 등),
+// 처음 성공한 계산이 아직 안정되지 않은 상태를 캐시해버릴 수 있다. 강제로 다시 계산해
+// 달라졌으면, 그 사이 옛 앵커에 저장된 노트를 새 앵커로 옮겨 붙인다 — retryMigration과
+// 같은 자가치유 패턴. 옛 앵커에 노트가 없었으면(가장 흔한 경우) 아무 일도 안 한다.
+function resettleAnchors(){
+  const before = anchorCache;
+  if (!before) return;
+  anchorCache = null;                 // 강제로 재계산
+  const after = deckAnchors();
+  if (!after || before.list.length !== after.length) return;
+  let changed = false;
+  before.list.forEach((oldA, i) => {
+    const newA = after[i];
+    if (newA && oldA !== newA && rec.anchors[oldA] != null && rec.anchors[newA] == null) {
+      rec.anchors[newA] = rec.anchors[oldA];
+      delete rec.anchors[oldA];
+      changed = true;
+    }
   });
   if (changed) saveRecNow();
 }
