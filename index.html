@@ -232,9 +232,10 @@ input[type=file]{display:none}
   <span class="kicker">Presenter Console</span>
   <h1>HTML 발표 자료를 여기에 놓으세요</h1>
   <p>완성된 슬라이드 HTML 파일 하나를 끌어다 놓으면, 청중 화면과 분리된 발표자 콘솔이
-     열립니다. 현재·다음 화면, 페이지별 메모, 경과 타이머가 함께 붙습니다.</p>
+     열립니다. 현재·다음 화면, 페이지별 메모, 경과 타이머가 함께 붙습니다.
+     내보낸 노트(.md)를 놓으면 메모를 다시 불러옵니다.</p>
   <button id="pickBtn" class="primary">파일 선택</button>
-  <input type="file" id="fileInput" accept=".html,.htm,text/html">
+  <input type="file" id="fileInput" accept=".html,.htm,.md,text/html,text/markdown">
   <button id="resumeBtn" hidden></button>
   <p class="fine">파일은 이 브라우저 안에서만 열립니다. 서버로 올라가지 않고, 인터넷 없이도 동작합니다.</p>
 </div>
@@ -457,8 +458,10 @@ window.__ptLoad = loadDeck; // 프로그래매틱 로드용(테스트/확장)
 
 function handleFile(file){
   if (!file) return;
+  const isMd = /\.md$/i.test(file.name);
+  if (isMd && !deckHTML) { flash('발표 자료를 먼저 열어주세요.'); return; }
   const r = new FileReader();
-  r.onload = () => loadDeck(r.result, file.name);
+  r.onload = () => isMd ? importNotes(r.result) : loadDeck(r.result, file.name);
   r.readAsText(file);
 }
 $('#pickBtn').onclick = () => $('#fileInput').click();
@@ -989,6 +992,65 @@ function renderOrphans(){
     wrap.append(hint, body, row);
     list.append(wrap);
   });
+}
+
+// 어느 선택지를 골라도 노트가 사라지지 않는다 — 밀려난 쪽은 미배정함으로 간다.
+function importNotes(text){
+  const parsed = parseNotes(text);
+  if (!parsed.ok) { flash('이 파일은 노트 내보내기 파일이 아닙니다.'); return; }
+  const mine = deckAnchors();
+  const fileKeys = Object.keys(parsed.anchors);
+  // Task 9 와 동일하게 empty 계열 앵커(빈 슬라이드)는 겹침 판단에서 제외한다 —
+  // 그렇지 않으면 서로 무관한 파일이 같은 개수의 빈 슬라이드를 가졌다는 이유만으로
+  // "이 자료의 것"이라고 오판될 수 있다.
+  const fileReal = fileKeys.filter(a => !a.startsWith('empty'));
+  const mineReal = mine ? mine.filter(a => !a.startsWith('empty')) : null;
+  if (mineReal && fileReal.length && anchorOverlap(fileReal, mineReal) < 0.2 &&
+      !confirm('다른 자료에서 내보낸 노트로 보입니다. 계속할까요?')) return;
+
+  const clash = fileKeys.filter(a => rec.anchors[a] && rec.anchors[a] !== parsed.anchors[a]);
+  let replace = true;
+  if (clash.length) {
+    replace = confirm(`${clash.length}개 페이지에 이미 다른 노트가 있습니다.\n\n확인 = 파일 것으로 교체(기존 노트는 미배정함으로 이동)\n취소 = 기존 유지(파일 노트를 미배정함으로 이동)`);
+  }
+
+  store.set(recKey() + ':undo', JSON.stringify(rec));   // 되돌리기 스냅샷
+  const orphans = (rec.orphans || []).slice();
+  let placed = 0;
+  fileKeys.forEach(a => {
+    const incoming = parsed.anchors[a], existing = rec.anchors[a];
+    const idx = mine ? mine.indexOf(a) : -1;
+    const hint = idx >= 0 ? `${idx + 1}번째 장` : '';
+    if (existing && existing !== incoming) {
+      if (replace) { orphans.push({ text: existing, hint: (hint || '이전') + ' · 교체되기 전 노트' }); rec.anchors[a] = incoming; placed++; }
+      else orphans.push({ text: incoming, hint: (hint || '가져온 노트') + ' · 기존 유지로 밀려난 노트' });
+    } else if (mine && idx < 0) {
+      orphans.push({ text: incoming, hint: '이 자료에서 위치를 찾지 못함' });
+    } else { rec.anchors[a] = incoming; placed++; }
+  });
+  parsed.orphans.forEach(o => orphans.push(o));
+  rec.orphans = orphans;
+  saveRecNow(); loadNotes(); refreshExportBtn();
+
+  const left = rec.orphans.length;
+  flash(`노트 ${placed}개 연결${left ? ` · ${left}개는 미배정 노트함` : ''}.`);
+  showUndo();
+}
+function showUndo(){
+  const el = $('#flash');
+  const btn = document.createElement('button');
+  btn.textContent = '가져오기 되돌리기';
+  btn.className = 'ghost';
+  btn.style.marginLeft = '8px';
+  btn.onclick = () => {
+    const snap = store.get(recKey() + ':undo');
+    if (!snap) return;
+    try { rec = Object.assign(blankRec(), JSON.parse(snap)); } catch (_) { return; }
+    saveRecNow(); loadNotes(); refreshExportBtn();
+    el.textContent = '가져오기를 되돌렸습니다.';
+  };
+  el.append(btn);
+  setTimeout(() => { if (btn.isConnected) btn.remove(); }, 30000);
 }
 
 /* ---------- 화면 꺼짐 방지 ---------- */
