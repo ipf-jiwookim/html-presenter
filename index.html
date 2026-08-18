@@ -195,15 +195,55 @@ kbd{
 
 input[type=file]{display:none}
 
+/* ── 단축키 도움말 ── */
+#help{position:fixed;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;
+  padding:24px;background:rgba(14,16,19,.88)}
+.help-card{background:var(--console);border:1px solid var(--rule);border-radius:14px;
+  padding:26px 30px;max-width:min(560px,100%);max-height:86vh;overflow:auto;
+  box-shadow:0 24px 60px rgba(0,0,0,.5)}
+.help-card h2{margin:0 0 16px;font-family:var(--label);font-size:15px;font-weight:600;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--next)}
+.help-card dl{margin:0;display:grid;gap:10px}
+.help-card dl > div{display:flex;align-items:baseline;gap:14px}
+.help-card dt{flex:0 0 11rem;font-family:var(--data);font-size:12.5px;color:var(--ink)}
+.help-card dd{margin:0;font-size:13.5px;color:var(--ink-dim)}
+.help-card dd em{font-style:normal;color:#5a6270}
+.help-foot{margin:18px 0 0;font-size:12.5px;line-height:1.7;color:var(--ink-dim)}
+.help-card > button{margin-top:18px}
+
+/* ── 장 번호 점프 ── */
+#posChip{cursor:pointer}
+#posChip:hover{border-color:var(--live)}
+#jumpInput{width:5ch;font:700 16px var(--data);background:#0f1216;color:var(--ink);
+  border:1px solid var(--live);border-radius:6px;padding:5px 8px;text-align:center;flex:none}
+
+
 /* ── 시작 화면: 방송 들어가기 전 "입력 패치 패널" ──
    콘솔 본체와 같은 세계관을 쓴다. ON AIR 표시등은 자료를 넣기 전엔 꺼져 있고,
    준비되면 켜진다 — 이 화면에서 기억에 남아야 하는 단 하나의 순간이다. */
 #dropzone{
-  flex:1;display:flex;align-items:center;justify-content:center;padding:28px;
-  background:
-    repeating-linear-gradient(180deg, rgba(255,255,255,.016) 0 1px, transparent 1px 3px),
-    radial-gradient(120% 80% at 18% 0%, #1a1f27 0%, var(--void) 68%);
+  position:relative;flex:1;display:flex;align-items:center;justify-content:center;padding:28px;
+  background:var(--void);overflow:hidden;
 }
+/* 1px 스캔라인은 미세하게 떨려 눈이 아팠다 — 아주 느리게 움직이는 넓은 광원으로 바꾼다 */
+#dropzone::before,#dropzone::after{
+  content:'';position:absolute;border-radius:50%;pointer-events:none;filter:blur(80px);
+}
+#dropzone::before{
+  width:70vmax;height:70vmax;left:-16vmax;top:-26vmax;
+  background:radial-gradient(circle, rgba(255,66,48,.10), transparent 62%);
+}
+#dropzone::after{
+  width:56vmax;height:56vmax;right:-14vmax;bottom:-22vmax;
+  background:radial-gradient(circle, rgba(255,176,46,.07), transparent 62%);
+}
+@media (prefers-reduced-motion: no-preference){
+  #dropzone::before{animation:drift1 26s ease-in-out infinite alternate}
+  #dropzone::after{animation:drift2 34s ease-in-out infinite alternate}
+  @keyframes drift1{to{transform:translate3d(5vmax,4vmax,0) scale(1.1)}}
+  @keyframes drift2{to{transform:translate3d(-4vmax,-5vmax,0) scale(1.12)}}
+}
+.patch{position:relative}
 #dropzone.over .patch{border-color:var(--next);box-shadow:0 0 0 1px var(--next), 0 24px 60px rgba(0,0,0,.5)}
 .patch{
   width:min(920px,100%);border:1px solid var(--rule);border-radius:14px;overflow:hidden;
@@ -267,11 +307,6 @@ input[type=file]{display:none}
 .onair-cap{font-size:11.5px;line-height:1.6;color:#5a6270;text-align:center;max-width:20ch}
 .patch.armed .onair-cap{color:var(--ok)}
 
-.patch-foot{
-  display:flex;align-items:baseline;gap:7px;flex-wrap:wrap;padding:12px 26px 16px;
-  border-top:1px solid var(--rule);background:#0f1216;font-size:11.5px;line-height:1.7;color:#5a6270;
-}
-.patch-foot .dot{color:#3a4250}
 
 @media (max-width:760px){
   .patch-body{grid-template-columns:minmax(0,1fr);gap:20px}
@@ -280,16 +315,12 @@ input[type=file]{display:none}
   .onair-cap{text-align:left;max-width:none}
 }
 @media (prefers-reduced-motion: no-preference){
-  .patch-rail,.patch-left h1,.patch-left p,.setup,.patch-go,.patch-right,.patch-foot{
-    animation:patchIn .5s cubic-bezier(.2,.7,.3,1) both;
-  }
-  .patch-left h1{animation-delay:.05s}
+  .patch-rail,.patch-left h1,.patch-left p,.setup,.patch-go,.patch-right,  .patch-left h1{animation-delay:.05s}
   .patch-left p{animation-delay:.1s}
   .setup{animation-delay:.16s}
   .patch-go{animation-delay:.24s}
   .patch-right{animation-delay:.2s}
-  .patch-foot{animation-delay:.3s}
-  @keyframes patchIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
+    @keyframes patchIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
 }
 
 /* ── 드래그 안내 ── */
@@ -404,11 +435,6 @@ input[type=file]{display:none}
       </div>
     </div>
 
-    <div class="patch-foot">
-      <span>끌어다 놓아도 됩니다</span>
-      <span class="dot" aria-hidden="true">·</span>
-      <span>파일은 이 브라우저 안에서만 열립니다 — 서버로 올라가지 않고, 인터넷 없이도 동작합니다</span>
-    </div>
   </div>
   <input type="file" id="fileInput" accept=".html,.htm,text/html">
   <input type="file" id="notesInput" accept=".md,text/markdown">
