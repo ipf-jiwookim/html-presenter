@@ -140,10 +140,11 @@ main{
 #noteFor{font-family:var(--data);font-size:12.5px;color:var(--next);font-variant-numeric:tabular-nums}
 #savedTag{margin-left:auto;font-size:12px;color:var(--ok);opacity:0;transition:opacity .25s ease}
 #savedTag.show{opacity:1}
-.cue-head button{padding:4px 9px;font-size:12.5px}
+/* 조작부는 눌러도 되는 것처럼 보여야 한다 — 배경·테두리 없는 ghost 는 버튼으로 안 읽혔다 */
+.cue-head button{padding:5px 10px;font-size:12.5px;border-radius:6px}
 /* "A− / A+" 로는 무슨 버튼인지 아무도 못 알아봤다 — 무엇을 조절하는지 말로 쓴다 */
 .fontgrp{display:flex;align-items:center;gap:4px;margin-left:auto;flex:none}
-.fontgrp .label{font-size:11px;letter-spacing:.1em;white-space:nowrap}
+.fontgrp button{min-width:38px;text-align:center}
 #savedTag{margin-left:0;flex:none}
 .cue-head h2,.cue-head #noteFor{flex:none}
 #note{
@@ -201,6 +202,19 @@ kbd{
 input[type=file]{display:none}
 #resumeBtn{background:transparent;border-color:var(--rule);color:var(--next)}
 
+/* ── 드래그 안내 ── */
+#dropHint{
+  position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;
+  background:rgba(14,16,19,.82);pointer-events:none;
+}
+#dropHint > div{
+  font-family:var(--label);font-size:clamp(22px,3vw,34px);font-weight:600;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--ink);text-align:center;
+  padding:34px 48px;border:2px dashed var(--next);border-radius:16px;
+}
+#dropHint small{display:block;margin-top:12px;font-family:var(--ui);font-size:14px;
+  font-weight:400;letter-spacing:0;text-transform:none;color:var(--ink-dim)}
+
 /* ── 알림 바 ── */
 #notice{
   display:flex;align-items:center;gap:12px;flex-wrap:wrap;
@@ -223,6 +237,10 @@ input[type=file]{display:none}
   <button id="openAud" class="primary">청중 화면 열기</button>
   <button id="reloadBtn" class="ghost">파일 교체</button>
 </header>
+
+<div id="dropHint" hidden>
+  <div>여기에 놓으세요<small>발표 자료(.html) — 자료 교체 · 노트 파일(.md) — 메모 불러오기</small></div>
+</div>
 
 <div id="notice" role="status" hidden>
   <span id="noticeMsg"></span>
@@ -266,11 +284,12 @@ input[type=file]{display:none}
         <span id="noteFor"></span>
         <span id="savedTag" aria-live="polite">저장됨</span>
         <span class="fontgrp">
-          <span class="label">글씨</span>
-          <button id="fontDown" class="ghost" title="메모 글씨 작게" aria-label="메모 글씨 작게">작게</button>
-          <button id="fontUp" class="ghost" title="메모 글씨 크게" aria-label="메모 글씨 크게">크게</button>
+          <button id="fontDown" title="메모 글씨 작게" aria-label="메모 글씨 작게">가−</button>
+          <button id="fontUp" title="메모 글씨 크게" aria-label="메모 글씨 크게">가＋</button>
         </span>
-        <button id="exportBtn" class="ghost">내보내기</button>
+        <button id="importBtn" title="내보낸 노트 파일(.md)을 불러옵니다">불러오기</button>
+        <button id="exportBtn" title="이 자료의 메모를 .md 파일로 저장합니다">저장</button>
+        <input type="file" id="mdInput" accept=".md,text/markdown">
       </div>
       <textarea id="note" aria-label="이 페이지 메모" spellcheck="false"
         placeholder="이 페이지에서 할 말을 적어두세요…"></textarea>
@@ -483,12 +502,24 @@ function handleFile(file){
   r.readAsText(file);
 }
 $('#pickBtn').onclick = () => $('#fileInput').click();
+$('#importBtn').onclick = function(){ this.blur(); $('#mdInput').click(); };
+$('#mdInput').onchange = e => { const f = e.target.files[0]; e.target.value = ''; handleFile(f); };
 $('#reloadBtn').onclick = function(){ this.blur(); $('#fileInput').click(); };
 $('#fileInput').onchange = e => handleFile(e.target.files[0]);
-document.addEventListener('dragover', e => { e.preventDefault(); $('#dropzone').classList.add('over'); });
-document.addEventListener('dragleave', () => $('#dropzone').classList.remove('over'));
+// 자료를 이미 열어 둔 뒤에는 드롭존이 숨어 있어, 끌어다 놔도 아무 반응이 없어 보였다 —
+// 그래서 발표 자료든 노트 파일이든 받는다는 안내를 화면 위에 띄운다.
+document.addEventListener('dragover', e => {
+  e.preventDefault();
+  $('#dropzone').classList.add('over');
+  if (deckHTML) $('#dropHint').hidden = false;
+});
+document.addEventListener('dragleave', e => {
+  if (e.relatedTarget) return;            // 자식 요소 사이 이동은 벗어난 게 아니다
+  $('#dropzone').classList.remove('over');
+  $('#dropHint').hidden = true;
+});
 document.addEventListener('drop', e => {
-  e.preventDefault(); $('#dropzone').classList.remove('over');
+  e.preventDefault(); $('#dropzone').classList.remove('over'); $('#dropHint').hidden = true;
   handleFile(e.dataTransfer.files[0]);
 });
 
