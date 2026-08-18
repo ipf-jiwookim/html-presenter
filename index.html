@@ -71,19 +71,6 @@ body{
   font-family:var(--data);font-size:30px;font-weight:700;line-height:1;
   font-variant-numeric:tabular-nums;min-width:5.2ch;text-align:right;
 }
-/* 목표는 클릭 대상이 눈에 보여야 한다 — 숨은 클릭(경과 숫자)은 아무도 못 찾았다 */
-#goalMeter{padding:5px 11px;border:1px dashed var(--rule);border-radius:8px;background:transparent;align-items:baseline}
-#goalMeter:hover{border-color:var(--next);border-style:solid;background:var(--raised)}
-#goalMeter.set{border-style:solid;border-color:var(--rule)}
-#goalVal{font-family:var(--data);font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;min-width:3ch;text-align:right}
-#goalMeter:not(.set) #goalVal{font-family:var(--ui);font-size:14px;font-weight:600;color:var(--ink-dim);min-width:0}
-#goalMeter.warn #goalVal,#goalMeter.warn .meter-k{color:var(--next)}
-#goalMeter.over #goalVal,#goalMeter.over .meter-k{color:var(--live)}
-#goalInput{width:5ch;font:700 20px var(--data);background:#0f1216;color:var(--ink);border:1px solid var(--next);border-radius:5px;padding:2px 5px;text-align:right}
-@media (prefers-reduced-motion: no-preference){
-  #goalMeter.pulse #goalVal{animation:goalHit .5s ease-out 2}
-  @keyframes goalHit{50%{transform:scale(1.18)}}
-}
 
 /* ── 버튼 ── */
 button{
@@ -231,11 +218,6 @@ input[type=file]{display:none}
   <span class="meter" title="발표를 시작한 뒤 흐른 시간">
     <span class="meter-k">경과</span><span id="timer">00:00</span>
   </span>
-  <button type="button" id="goalMeter" class="meter"
-    title="발표에 배정된 시간(분)을 넣으면 남은 시간이 표시됩니다. 비우고 Enter 를 누르면 해제됩니다."
-    aria-label="발표 배정 시간 설정">
-    <span class="meter-k" id="goalLabel">목표</span><span id="goalVal">설정</span>
-  </button>
   <button id="timerBtn" class="icon-btn" aria-label="타이머 시작 또는 일시정지">▶</button>
   <button id="resetBtn" class="icon-btn" aria-label="타이머 리셋">↺</button>
   <button id="openAud" class="primary">청중 화면 열기</button>
@@ -449,22 +431,8 @@ function fmtClock(totalSec){
   const ss = String(s % 60).padStart(2, '0');
   return h ? `${h}:${m}:${ss}` : `${m}:${ss}`;
 }
-function validateGoal(raw){
-  const s = String(raw == null ? '' : raw).trim();
-  if (!s) return { ok: 'clear' };
-  if (!/^\d{1,3}$/.test(s)) return { ok: false };
-  const min = Number(s);
-  if (min < 1 || min > 600) return { ok: false };
-  return { ok: true, min };
-}
-// 초과는 음수(−02:20)로 쓰지 않는다 — 이중 부정이라 순간적으로 안 읽힌다.
-function goalDisplay(goalMin, accMs){
-  const left = goalMin * 60 - Math.floor(accMs / 1000);
-  if (left < 0) return { label: '초과', text: fmtClock(-left), state: 'over' };
-  return { label: '남은', text: fmtClock(left), state: left <= 300 ? 'warn' : 'ok' };
-}
 
-const PURE = { fnv1a, normTokens, slideAnchors, anchorOverlap, migrateIndexed, sanitizeName, noteFileName, serializeNotes, parseNotes, fmtClock, validateGoal, goalDisplay };
+const PURE = { fnv1a, normTokens, slideAnchors, anchorOverlap, migrateIndexed, sanitizeName, noteFileName, serializeNotes, parseNotes, fmtClock };
 /* ==== PURE CORE END ==== */
 if (typeof window !== 'undefined') window.__pt = PURE;   // 브라우저 검증용 훅
 
@@ -806,7 +774,7 @@ function startTimer(){
   started = true;
   if (runT) return;
   const t0 = Date.now() - acc;
-  runT = setInterval(() => { acc = Date.now() - t0; $('#timer').textContent = fmt(acc); renderGoal(); }, 250);
+  runT = setInterval(() => { acc = Date.now() - t0; $('#timer').textContent = fmt(acc); }, 250);
   $('#timerBtn').textContent = '⏸';
   $('#timerBtn').setAttribute('aria-label', '타이머 일시정지');
 }
@@ -816,61 +784,8 @@ function pauseTimer(){
   $('#timerBtn').setAttribute('aria-label', '타이머 시작');
 }
 $('#timerBtn').onclick = function(){ this.blur(); runT ? pauseTimer() : startTimer(); };
-$('#resetBtn').onclick = function(){ this.blur(); pauseTimer(); acc = 0; started = false; goalHit = false; $('#timer').textContent = '00:00'; renderGoal(); flash('타이머를 리셋했습니다.'); };
+$('#resetBtn').onclick = function(){ this.blur(); pauseTimer(); acc = 0; started = false; $('#timer').textContent = '00:00'; flash('타이머를 리셋했습니다.'); };
 
-let goalHit = false;
-function renderGoal(){
-  const box = $('#goalMeter');
-  if (!rec.goalMin) {
-    // 숨기지 않는다 — 목표를 설정할 수 있다는 사실 자체가 보여야 한다
-    box.classList.remove('set', 'warn', 'over');
-    $('#goalLabel').textContent = '목표';
-    $('#goalVal').textContent = '설정';
-    return;
-  }
-  const d = goalDisplay(rec.goalMin, acc);
-  box.classList.add('set');
-  $('#goalLabel').textContent = d.label;
-  $('#goalVal').textContent = d.text;
-  box.classList.toggle('warn', d.state === 'warn');
-  box.classList.toggle('over', d.state === 'over');
-  // 알림은 도달 순간 1회만 — 계속 깜빡이면 그게 더 방해다. 소리는 쓰지 않는다
-  // (노트북 오디오가 강의장 스피커에 연결된 경우 청중에게 들린다).
-  if (d.state === 'over' && !goalHit) {
-    goalHit = true;
-    flash('목표 시간에 도달했습니다.');
-    box.classList.add('pulse');
-    setTimeout(() => box.classList.remove('pulse'), 1200);
-  }
-}
-function editGoal(){
-  if ($('#goalInput')) return;
-  const holder = $('#goalMeter').parentNode;
-  const input = document.createElement('input');
-  input.id = 'goalInput';
-  input.type = 'text';
-  input.inputMode = 'numeric';
-  input.setAttribute('aria-label', '발표 배정 시간(분). 비우면 해제');
-  input.value = rec.goalMin || '';
-  input.placeholder = '분';
-  holder.append(input);
-  input.focus(); input.select();
-  const done = commit => {
-    if (commit) {
-      const v = validateGoal(input.value);
-      if (v.ok === true) { rec.goalMin = v.min; goalHit = false; saveRec(); flash(`목표 ${v.min}분으로 설정했습니다.`); }
-      else if (v.ok === 'clear') { delete rec.goalMin; goalHit = false; saveRec(); flash('목표 시간을 해제했습니다.'); }
-      else flash('1~600 사이의 분 단위 숫자를 입력해 주세요.');
-    }
-    input.remove(); renderGoal();
-  };
-  input.onkeydown = e => {
-    if (e.key === 'Enter') { e.preventDefault(); done(true); }
-    else if (e.key === 'Escape') { e.preventDefault(); done(false); }
-  };
-  input.onblur = () => done(false);
-}
-$('#goalMeter').onclick = function(){ this.blur(); editGoal(); };
 
 
 /* ---------- 노트 레코드 ----------
@@ -895,6 +810,7 @@ function saveRecNow(){
 function saveRec(){ clearTimeout(saveT); saveT = setTimeout(saveRecNow, 300); }
 
 // 앵커는 미리 계산하지 않는다 — 덱 스크립트가 늦게 초기화되면 빈 지문이 캐시된다.
+/* ── 앵커 해석 — 슬라이드 내용에서 지문을 뽑아 노트의 주소로 쓴다 ── */
 let anchorCache = null;
 function deckAnchors(){
   try {
@@ -925,6 +841,7 @@ function noteSet(i, text){
   saveRec();
 }
 
+/* ── 레코드 적재 · 마이그레이션 · 복구 ── */
 function loadRec(){
   anchorCache = null;
   const raw = store.get(recKey());
@@ -994,6 +911,7 @@ function restoreNoticeBtn(){
 // 인덱스로만 남아있는 구노트를 앵커로 승격한다. 플래그 없이 매번 시도해도 안전하다 —
 // 승격할 게 없거나 덱이 아직 준비 안 됐으면 그냥 아무 일도 안 한다. loadRec() 직후와
 // 1초 지연 시점 양쪽에서 불러, 이전에 승격 기회를 놓친 기록도 다음 로드에서 저절로 낫는다.
+/* ── 자가치유 — 덱이 늦게 준비되거나 지문이 뒤늦게 정착하는 경우 보정한다 ── */
 function retryMigration(){
   const anchors = deckAnchors();
   if (!anchors) return;
@@ -1037,6 +955,7 @@ function resettleAnchors(){
   if (changed) saveRecNow();
 }
 
+/* ── 메모 입력 · 표시 ── */
 $('#note').oninput = () => {
   noteSet(step, $('#note').value);
   refreshExportBtn();
@@ -1046,14 +965,16 @@ $('#note').oninput = () => {
   $('#note')._t = setTimeout(() => tag.classList.remove('show'), 1200);
 };
 function loadNotes(){
-  $('#note').value = noteGet(step);
+  // 값이 같은데도 대입하면 한글 조합이 끊기고 커서가 맨 뒤로 튄다 — 달라졌을 때만 쓴다
+  const text = noteGet(step);
+  if ($('#note').value !== text) $('#note').value = text;
   $('#nextnote').textContent = noteGet(step + 1);
   $('#savedTag').classList.remove('show');
   applyFontSize();
   renderOrphans();
   refreshExportBtn();
-  renderGoal();
 }
+/* ── 큐 시트 글씨 크기 ── */
 const FONT_STEPS = [13, 16, 20, 24, 28];
 function applyFontSize(){
   const px = FONT_STEPS.includes(rec.fontSize) ? rec.fontSize : 16;
@@ -1072,6 +993,7 @@ function bumpFont(dir){
 $('#fontDown').onclick = function(){ this.blur(); bumpFont(-1); };
 $('#fontUp').onclick = function(){ this.blur(); bumpFont(1); };
 
+/* ── 내보내기 ── */
 function slideTitle(i){
   try {
     const s = deckState(mirror.contentWindow);
@@ -1119,6 +1041,7 @@ function refreshExportBtn(){
   $('#exportBtn').disabled = !has;
   $('#exportBtn').title = has ? '' : '내보낼 메모가 없습니다';
 }
+/* ── 미배정 노트함 ── */
 function renderOrphans(){
   const box = $('#orphanBox'), list = $('#orphanList');
   const items = rec.orphans || [];
@@ -1156,6 +1079,7 @@ function renderOrphans(){
 }
 
 // 어느 선택지를 골라도 노트가 사라지지 않는다 — 밀려난 쪽은 미배정함으로 간다.
+/* ── 가져오기 · 되돌리기 ── */
 function importNotes(text){
   const parsed = parseNotes(text);
   if (!parsed.ok) { flash('이 파일은 노트 내보내기 파일이 아닙니다.'); return; }
