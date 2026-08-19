@@ -87,6 +87,16 @@ button:focus-visible{outline:2px solid var(--next);outline-offset:2px}
   min-width:48px;min-height:44px;padding:0 14px;
   font-size:19px;line-height:1;display:inline-flex;align-items:center;justify-content:center;
 }
+/* 타이머 두 버튼만 키운다. 같은 font-size 19px 에서 실제 그려지는 잉크 높이를 재 보면
+   ↺ 10px, ⏸ 11px 인데 ? 는 15px 이다. 기호 글리프가 em 박스를 절반만 쓰기 때문에
+   같은 크기로 지정해도 이 둘만 작아 보였다. 24px 로 올리면 둘 다 잉크 13px 로
+   옆의 ?(15), ⛶(13) 와 눈높이가 맞는다.
+   ▶ 와 ⏸ 는 같은 24px 에서 잉크가 18px 대 13px 로 달라서 누를 때마다 크기가 출렁인다.
+   ▶ 를 U+23F5 같은 미디어 기호로 바꾸면 맞지만 Windows 폰트 폴백에서 tofu 가 될 수
+   있어, 글리프는 그대로 두고 상태별 크기를 따로 준다(17px 에서 ▶ 잉크 13px). */
+#timerBtn{font-size:17px}
+#timerBtn.running{font-size:24px}
+#resetBtn{font-size:24px}
 /* 트랜스포트: 이전·다음은 같은 크기·같은 재질의 한 쌍. 다음만 탤리 LED 로 구분한다 */
 .tbtn{
   min-width:132px;height:54px;gap:9px;font-size:17px;font-weight:600;
@@ -134,7 +144,9 @@ main{
 .cue-head{display:flex;align-items:baseline;gap:8px;padding:10px 14px 0;min-width:0}
 .cue-tools{display:flex;align-items:center;gap:6px;padding:8px 14px 6px;min-width:0}
 .cue-tools .spacer{flex:1}
-#noteMap{overflow:hidden;text-overflow:ellipsis;min-width:0}
+/* 부차 정보다. 크기·색을 안 줘서 body 기본 15px + 최대 밝기를 상속했고,
+   그 결과 섹션 제목보다 크고 밝았다. 속삭이는 크기로 내린다. */
+#noteMap{overflow:hidden;text-overflow:ellipsis;min-width:0;font-size:11.5px;color:#6c7482}
 .cue-head h2{margin:0;font-size:15px;font-weight:700;color:var(--ink)}
 #noteFor{font-family:var(--data);font-size:12.5px;color:var(--next);font-variant-numeric:tabular-nums}
 #savedTag{margin-left:auto;font-size:12px;color:var(--ok);opacity:0;transition:opacity .25s ease}
@@ -151,6 +163,17 @@ main{
   background:#12151a;color:var(--ink);border:1px solid var(--rule);border-radius:8px;
   font:16px/1.7 var(--ui);
 }
+/* 미리보기가 현재 화면과 완전히 같을 때(마지막 장이거나 더 넘어가지 않는 자료)
+   "다음 화면" 이라는 이름을 달고 복사본을 보여주면 발표자에게 거짓말이 된다.
+   판정을 잘못했을 때 실제 내용이 가려지지 않도록 덮지 않고 흐리게만 한다. */
+.stage-end{
+  position:absolute;inset:0;margin:0;display:none;place-items:center;
+  font-size:13px;color:#7b8390;background:rgba(10,11,13,.55);
+}
+.stage.at-end .stage-end{display:grid}
+.stage.at-end #preview{opacity:.22}
+#preview{transition:opacity .3s ease}
+
 #note::placeholder{color:#5d6572}
 #note:focus-visible{outline:2px solid var(--next);outline-offset:1px;border-color:transparent}
 #nextnote{margin:8px 14px 14px;font-size:13px;line-height:1.6;color:var(--ink-dim);max-height:5.5em;overflow:auto;white-space:pre-wrap}
@@ -285,9 +308,16 @@ input[type=file]{display:none}
 }
 .slot.filled::before{transform:scaleY(1)}
 .slot-main{flex:1;min-width:0}
-.slot-k{font-size:14.5px;font-weight:600;color:var(--ink)}
-.slot-k b{color:var(--live);font-weight:600}
-.slot-k .opt{color:#5a6270;font-weight:400}
+.slot-k{display:flex;align-items:center;gap:11px;font-size:14.5px;font-weight:600;color:var(--ink)}
+/* 뱃지는 알약이 아니라 버튼과 같은 반경 계열(5px)로 둔다 — 한 화면에 둥근 정도가 두 종류
+   생기지 않게(버튼 8~9px, 화면 14px, 슬롯 0). 한글이라 자간은 벌리지 않는다. */
+.badge{
+  flex:none;padding:3px 8px;border-radius:5px;line-height:1.35;
+  font-size:11.5px;font-weight:700;
+  background:#232832;border:1px solid #343b46;color:#9ba3af;
+}
+/* 필수는 이 화면의 유일한 강조색을 쓰되 면으로 채우지 않는다 — 꽉 찬 빨강은 [발표 시작] 과 경쟁한다 */
+.badge.req{background:#2c1613;border-color:#5e2b23;color:#ff7a6c}
 .slot-v{margin-top:4px;font-family:var(--data);font-size:12.5px;color:#5a6270;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .slot.filled .slot-v{color:var(--ink)}
@@ -415,14 +445,14 @@ input[type=file]{display:none}
         <div class="setup">
           <div class="slot" id="slotDeck">
             <div class="slot-main">
-              <div class="slot-k">발표 자료 <b>필수</b></div>
+              <div class="slot-k">발표 자료<span class="badge req">필수</span></div>
               <div class="slot-v" id="deckPicked">HTML 파일</div>
             </div>
             <button id="pickBtn">고르기</button>
           </div>
           <div class="slot" id="slotNotes">
             <div class="slot-main">
-              <div class="slot-k">발표 대본 <span class="opt">선택</span></div>
+              <div class="slot-k">발표 대본<span class="badge">선택</span></div>
               <div class="slot-v" id="notesPicked">내보낸 대본 파일 (.md)</div>
             </div>
             <button id="pickNotesBtn">고르기</button>
@@ -454,7 +484,7 @@ input[type=file]{display:none}
   <section class="bay" aria-label="현재 화면">
     <div class="tally">
       <span class="name">현재 화면</span>
-      <span class="note">지금 청중이 보고 있는 장면</span>
+      <span class="note" id="liveNote">청중 화면을 열면 이 장면이 나갑니다</span>
     </div>
     <div class="stage"><iframe id="mirror" title="현재 슬라이드"></iframe></div>
   </section>
@@ -465,7 +495,7 @@ input[type=file]{display:none}
       <div class="spacer"></div>
       <button id="resync" title="내 화면만 처음부터 다시 그립니다. 청중 화면은 건드리지 않습니다">내 화면 다시 그리기</button>
     </div>
-    <div class="stage"><iframe id="preview" title="다음 슬라이드"></iframe></div>
+    <div class="stage" id="previewStage"><iframe id="preview" title="다음 슬라이드"></iframe><p class="stage-end">다음 화면이 없습니다</p></div>
 
     <section class="cue">
       <div class="cue-head">
@@ -592,7 +622,7 @@ function serializeNotes(o){
   L.push(`# ${o.deckName} 발표 대본`);
   L.push(`<!-- html-presenter notes v1 · ${o.total}장, ${o.today} -->`);
   L.push('<!-- 이 파일은 자유롭게 고쳐도 되지만, slide 주석은 지우지 마세요.');
-  L.push('     다시 가져올 때 노트가 제자리를 찾는 표시입니다. -->');
+  L.push('     다시 가져올 때 대본이 제자리를 찾는 표시입니다. -->');
   (o.notes || []).forEach(n => {
     L.push('');
     L.push(`## ${n.index + 1} / ${o.total} · "${n.title || '(제목 없음)'}"`);
@@ -913,8 +943,24 @@ function settle(deadDir){
     if (deadDir !== undefined && step === beforeStep) warnDeadDeck(deadDir);
   }, 260);
 }
+// 미리보기가 현재 화면과 실질적으로 동일한지 판정한다.
+// sig() 는 첫 항목이 scrollTop 이라 구조 변화와 스크롤 변화를 함께 본다 →
+// 스크롤형 덱이 아직 더 내려갈 수 있으면 지문이 달라져 끝으로 오판하지 않는다.
+function markPreviewEnd(){
+  const stage = $('#previewStage');
+  if (!deckHTML) { stage.classList.remove('at-end'); return; }
+  const ms = deckState(mirror.contentWindow), ps = deckState(preview.contentWindow);
+  let same;
+  if (ms && ps) same = ps.i === ms.i;                  // 구조를 읽으면 인덱스만 비교
+  else {
+    const a = sig(preview.contentWindow), b = sig(mirror.contentWindow);
+    same = a !== null && a === b;
+  }
+  stage.classList.toggle('at-end', same);
+}
 // 미리보기는 항상 현재+1 — 마지막 장까지 갔다 와도 오프셋이 어긋나지 않게 맞춰준다
-function syncPreview(after){
+function syncPreview(after){ syncPreviewCore(after); markPreviewEnd(); }
+function syncPreviewCore(after){
   if (!after) return;
   const pw = preview.contentWindow, target = Math.min(after.i + 1, after.n - 1);
   for (let guard = 0; guard < 60; guard++) {
@@ -930,7 +976,7 @@ function updateStep(st){
   const chip = $('#posChip');
   chip.textContent = s ? `${s.i + 1} / ${s.n}` : `${step + 1} 장`;
   chip.classList.toggle('at-end', !!(s && s.i >= s.n - 1));
-  $('#prevLabel').textContent = (s && s.i >= s.n - 1) ? '다음 화면 (마지막 장)' : '다음 화면';
+  $('#prevLabel').textContent = '다음 화면';
   $('#noteFor').textContent = s ? `${s.i + 1} / ${s.n} 장` : `${step + 1} 장`;
 }
 function endFlash(dir){
@@ -1054,9 +1100,12 @@ $('#fsHint').onclick = function(){
   flash('청중 창에서 F 를 누르거나 화면의 [⛶ 전체화면] 버튼을 클릭하세요.');
 };
 
-// ══ 발표 중 실수로 창을 닫는 것 방지 — 발표를 시작한 뒤에만 묻는다 ══
+// ══ 발표 중 실수로 창을 닫는 것 방지 ══
+// started 만 보면 "청중 창을 열고 아직 한 장도 안 넘긴" 상태에서 경고가 안 떴다.
+// 청중이 보고 있는 중이면 넘겼든 안 넘겼든 발표 중이다.
 window.addEventListener('beforeunload', e => {
-  if (!deckHTML || !started) return;
+  const live = !!(audience && !audience.closed);
+  if (!deckHTML || (!started && !live)) return;
   e.preventDefault(); e.returnValue = '';
 });
 
@@ -1081,6 +1130,9 @@ function openAudience(){
   writeDoc(audience);
   hookAudience();
   warnScreenExposure();
+  // 청중이 볼 수 있게 된 순간이 발표가 시작된 순간이다. 첫 [다음] 을 기다리면
+  // 1장에서 인사말을 하는 동안 경과가 00:00 에 머물러 사실과 달라진다.
+  if (!started) startTimer();
   if (step > 0) setTimeout(() => replay(audience, step), 900);
   audience.focus();
 }
@@ -1202,6 +1254,15 @@ setInterval(() => {
   el.classList.toggle('on', on);
   if (!on && audience) audience = null;
   autoSyncAudience();
+  markPreviewEnd();
+  // 청중 창이 없으면 아무도 보고 있지 않다. 보고 있다고 말하지 않는다.
+  $('#liveNote').textContent = on ? '지금 청중이 보고 있는 장면' : '청중 화면을 열면 이 장면이 나갑니다';
+  // 이미 열려 있으면 랙에서 가장 강한 빨강을 끝난 작업에 계속 쓰지 않는다.
+  // (누르면 그 창을 앞으로 가져오기만 한다)
+  const ob = $('#openAud');
+  ob.textContent = on ? '청중 화면 보이기' : '청중 화면 열기';
+  ob.classList.toggle('primary', !on);
+  ob.title = on ? '청중 화면 창을 앞으로 가져옵니다' : '';
   const auto = on && !!deckState(audience);
   $('#fsHint').hidden = !on;
   $('.trim').hidden = !on;                       // 청중 창이 없으면 보정할 대상이 없다
@@ -1222,11 +1283,13 @@ function startTimer(){
   const t0 = Date.now() - acc;
   runT = setInterval(() => { acc = Date.now() - t0; $('#timer').textContent = fmt(acc); }, 250);
   $('#timerBtn').textContent = '⏸';
+  $('#timerBtn').classList.add('running');      // ⏸ 는 ▶ 보다 작게 그려져 크기를 따로 준다
   $('#timerBtn').setAttribute('aria-label', '타이머 일시정지');
 }
 function pauseTimer(){
   clearInterval(runT); runT = null;
   $('#timerBtn').textContent = '▶';
+  $('#timerBtn').classList.remove('running');
   $('#timerBtn').setAttribute('aria-label', '타이머 시작');
 }
 $('#timerBtn').onclick = function(){ this.blur(); runT ? pauseTimer() : startTimer(); };
@@ -1327,7 +1390,7 @@ function offerRecovery(){
   });
   if (!best) return;
   const from = best.key.slice('ptnotes2:'.length);
-  showNotice(`「${from}」에 쓴 노트 ${best.count}개가 있습니다. 이 자료의 것으로 보입니다.`);
+  showNotice(`「${from}」에 쓴 대본 ${best.count}개가 있습니다. 이 자료의 것으로 보입니다.`);
   const btn = $('#noticeBtn');
   btn.hidden = false;
   btn.textContent = '불러오기';
@@ -1343,7 +1406,7 @@ function offerRecovery(){
     saveRecNow(); loadNotes(); refreshExportBtn();
     $('#notice').hidden = true;
     restoreNoticeBtn();
-    flash(`노트 ${best.count}개를 불러왔습니다.`);
+    flash(`대본 ${best.count}개를 불러왔습니다.`);
     showUndo();
   };
 }
@@ -1370,7 +1433,7 @@ function retryMigration(){
     else if (rec.anchors[a] !== incoming) {
       // 앵커 자리에 이미 다른 노트가 있으면 덮지 않고 미배정함으로 옮긴다
       rec.orphans = rec.orphans || [];
-      rec.orphans.push({ text: incoming, hint: `${Number(k) + 1}번째 장 · 앵커 승격 중 밀려난 노트` });
+      rec.orphans.push({ text: incoming, hint: `${Number(k) + 1}번째 장 · 앵커 승격 중 밀려난 대본` });
     }
     delete rec.byIndex[k];
     changed = true;
@@ -1500,7 +1563,7 @@ function exportNotes(){
   a.download = noteFileName(deckName, new Date().toISOString().slice(0, 10));
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-  flash(`노트 ${notes.length + orphansOut.length}개를 내보냈습니다.`);
+  flash(`대본 ${notes.length + orphansOut.length}개를 내보냈습니다.`);
 }
 $('#exportBtn').onclick = function(){ this.blur(); exportNotes(); };
 function refreshExportBtn(){
@@ -1549,7 +1612,7 @@ function renderOrphans(){
 /* ── 가져오기 · 되돌리기 ── */
 function importNotes(text){
   const parsed = parseNotes(text);
-  if (!parsed.ok) { flash('이 파일은 노트 내보내기 파일이 아닙니다.'); return; }
+  if (!parsed.ok) { flash('이 파일은 대본 내보내기 파일이 아닙니다.'); return; }
   const mine = deckAnchors();
   const fileKeys = Object.keys(parsed.anchors);
   // Task 9 와 동일하게 empty 계열 앵커(빈 슬라이드)는 겹침 판단에서 제외한다 —
@@ -1558,7 +1621,7 @@ function importNotes(text){
   const fileReal = fileKeys.filter(a => !a.startsWith('empty'));
   const mineReal = mine ? mine.filter(a => !a.startsWith('empty')) : null;
   if (mineReal && fileReal.length && anchorOverlap(fileReal, mineReal) < 0.2 &&
-      !confirm('다른 자료에서 내보낸 노트로 보입니다. 계속할까요?')) return;
+      !confirm('다른 자료에서 내보낸 대본으로 보입니다. 계속할까요?')) return;
 
   const clash = fileKeys.filter(a => rec.anchors[a] && rec.anchors[a] !== parsed.anchors[a]);
   let replace = true;
@@ -1574,8 +1637,8 @@ function importNotes(text){
     const idx = mine ? mine.indexOf(a) : -1;
     const hint = idx >= 0 ? `${idx + 1}번째 장` : '';
     if (existing && existing !== incoming) {
-      if (replace) { orphans.push({ text: existing, hint: (hint || '이전') + ' · 교체되기 전 노트' }); rec.anchors[a] = incoming; placed++; }
-      else orphans.push({ text: incoming, hint: (hint || '가져온 노트') + ' · 기존 유지로 밀려난 노트' });
+      if (replace) { orphans.push({ text: existing, hint: (hint || '이전') + ' · 교체되기 전 대본' }); rec.anchors[a] = incoming; placed++; }
+      else orphans.push({ text: incoming, hint: (hint || '가져온 대본') + ' · 기존 유지로 밀려난 대본' });
     } else if (mine && idx < 0) {
       orphans.push({ text: incoming, hint: '이 자료에서 위치를 찾지 못함' });
     } else { rec.anchors[a] = incoming; placed++; }
@@ -1585,7 +1648,7 @@ function importNotes(text){
   saveRecNow(); loadNotes(); refreshExportBtn();
 
   const left = rec.orphans.length;
-  flash(`노트 ${placed}개 연결${left ? ` · ${left}개는 미배정 노트함` : ''}.`);
+  flash(`대본 ${placed}개 연결${left ? ` · ${left}개는 미배정함` : ''}.`);
   showUndo();
 }
 function showUndo(){
