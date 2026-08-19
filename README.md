@@ -6,6 +6,7 @@
 발표 자료는 한 글자도 고치지 않습니다.
 
 👉 **[바로 사용하기](https://ipf-jiwookim.github.io/html-presenter/)** (설치도, 회원가입도 없습니다)
+📄 **[사용 설명서 내려받기 (PDF)](https://ipf-jiwookim.github.io/html-presenter/docs/manual/발표자콘솔_사용설명서.pdf)** (A4 6쪽, 인쇄용)
 
 ---
 
@@ -167,6 +168,18 @@ node --test test/*.test.mjs
 ```
 
 설계·구현 기록은 `docs/superpowers/` 에 있습니다.
+
+### 사용 설명서 다시 만들기
+
+`docs/manual/` 에 설명서 원본이 있습니다. 스크린샷은 가짜 UI 를 그린 것이 아니라
+실제 `index.html` 을 크롬으로 띄워 찍습니다. 본체가 바뀌면 다시 만들어 주세요.
+
+```bash
+docs/manual/build.sh
+```
+
+크롬과 Pillow 가 필요합니다. QR 을 다시 만들려면 `segno` 도 설치하세요
+(없으면 커밋된 `shots/qr.svg` 를 그대로 씁니다).
 
 ## 라이선스
 
