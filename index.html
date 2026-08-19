@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#0e1013">
-<title>발표자 콘솔</title>
+<title>HTML Presenter</title>
 <style>
 /* ─────────────────────────────────────────────────────────────
    부조정실 콘솔. PROGRAM(청중이 보는 화면) / PREVIEW(다음 화면) 탤리 구조.
@@ -283,8 +283,10 @@ input[type=file]{display:none}
 /* 오프라인 강의장 때문에 웹폰트를 못 쓴다. 서체로는 멋을 낼 수 없으니
    스케일·굵기·자간만으로 위계를 만든다 */
 .patch-left h1{
-  margin:0;font-size:clamp(36px,4.6vw,60px);font-weight:800;
-  letter-spacing:-.045em;line-height:.98;color:var(--ink);
+  /* 크기는 한 줄에 들어가는 한계에서 잡았다. 제품명이 두 동강 나면 이름으로 안 읽힌다 */
+  margin:0;font-size:clamp(32px,4.2vw,54px);font-weight:800;
+  letter-spacing:-.03em;line-height:1.04;color:var(--ink);
+  text-wrap:nowrap;
 }
 .patch-left p{
   margin:14px 0 0;max-width:29ch;font-size:14.5px;line-height:1.7;
@@ -441,8 +443,8 @@ input[type=file]{display:none}
   <div class="patch">
     <div class="patch-body">
       <div class="patch-left">
-        <h1>발표자 콘솔</h1>
-        <p>청중에게는 자료만.<br>대본과 타이머는 이 화면에만 남습니다.</p>
+        <h1>HTML Presenter</h1>
+        <p>HTML 발표 자료에 발표자 도구를 붙입니다.<br>자료는 한 글자도 고치지 않습니다.</p>
 
         <div class="setup">
           <div class="slot" id="slotDeck">
@@ -709,7 +711,7 @@ function loadDeck(text, name){
   if (deckName) { clearTimeout(saveT); saveRecNow(); }   // 덱을 바꾸기 전에 이전 덱의 대기 중인 저장을 flush
   deckHTML = text; deckName = name || 'deck.html'; step = 0; deadWarned = false;
   $('#deckname').textContent = deckName;
-  document.title = deckName + ' (발표자 콘솔)';
+  document.title = deckName + ' (HTML Presenter)';
   $('#dropzone').hidden = true;
   ['#app','#rack','#transport'].forEach(s => $(s).hidden = false);
   mirror = writeFrame(mirror, 0);
@@ -747,7 +749,7 @@ function renderSetup(){
   const ready = !!staged.deck;                            // 자료 없이는 시작할 수 없다
   $('#deckPicked').textContent = staged.deck ? staged.deck.name : 'HTML 파일';
   // 고른 게 대본 파일이 아니면 여기서 말한다. 시작 화면에는 flash 자리가 없고,
-  // 발표를 시작한 뒤에 알려주면 이미 늦다(화면이 콘솔로 바뀐 뒤다).
+  // 발표를 시작한 뒤에 알려주면 이미 늦다(화면이 발표자 화면으로 바뀐 뒤다).
   $('#notesPicked').textContent = staged.notes ? staged.notes.name
     : staged.notesErr ? `${staged.notesErr} — 대본 내보내기 파일이 아닙니다`
     : '내보낸 대본 파일 (.md)';
@@ -811,7 +813,7 @@ function handleFile(file){
   }
   stageFile(file, text => {
     if (isMd) {
-      // 발표를 시작하기 전에 검사한다 — 시작한 뒤에 알려주면 화면이 이미 콘솔로 바뀐 뒤다
+      // 발표를 시작하기 전에 검사한다 — 시작한 뒤에 알려주면 화면이 이미 발표자 화면으로 바뀐 뒤다
       if (parseNotes(text).ok) { staged.notes = { text, name: file.name }; staged.notesErr = ''; }
       else { staged.notes = null; staged.notesErr = file.name; }
     }
@@ -1172,7 +1174,7 @@ function warnScreenExposure(){
 }
 
 function hookAudience(){
-  // 청중 창에서 직접 키를 누르면 발표자 콘솔도 따라오게 역방향 동기화
+  // 청중 창에서 직접 키를 누르면 발표자 화면도 따라오게 역방향 동기화
   try {
     audience.document.addEventListener('keydown', e => {
       if (!e.isTrusted) return; // 우리가 보낸 합성 이벤트는 무시
