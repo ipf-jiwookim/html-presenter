@@ -321,6 +321,8 @@ input[type=file]{display:none}
 .slot-v{margin-top:4px;font-family:var(--data);font-size:12.5px;color:#5a6270;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .slot.filled .slot-v{color:var(--ink)}
+/* 고른 파일이 대본이 아닐 때. 채워짐(초록 심지)과 헷갈리지 않게 색만 바꾼다 */
+.slot.err .slot-v{color:#ff7a6c;white-space:normal}
 .slot button{flex:none}
 
 .patch-go{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:clamp(24px,3vw,34px)}
@@ -395,7 +397,7 @@ input[type=file]{display:none}
 
 <header class="rack" id="rack" hidden>
   <span class="deck-id" id="deckname" translate="no"></span>
-  <span id="posChip" aria-live="polite"></span>
+  <button id="posChip" type="button" aria-live="polite" title="누르면 장 번호로 바로 이동합니다"></button>
   <span id="audStatus" aria-live="polite">청중 화면 없음</span>
   <div class="spacer"></div>
   <span class="meter" title="발표를 시작한 뒤 흐른 시간">
@@ -731,7 +733,10 @@ function loadDeck(text, name){
   if (/(?:<img[^>]+src|url\()\s*=?\s*["']?(?!https?:|data:|\/\/|#)[\w.][^"')>]*/i.test(deckHTML))
     flash('이미지가 별도 파일로 분리된 자료입니다. 단일 HTML로 합쳐야 이미지가 표시됩니다.');
   reqWakeLock();
-  store.set('ptlast', JSON.stringify({ name: deckName, html: deckHTML }));
+  // "이어서 열기"는 편의 기능이고 대본은 잃으면 안 되는 데이터다. 둘이 같은 저장 공간
+  // (origin 당 약 5MB)을 나눠 쓰므로, 큰 자료를 통째로 넣어 대본 저장을 막지 않는다.
+  // 못 넣을 때 앞 자료의 기록을 남겨 두면 다음에 엉뚱한 자료를 "지난 발표"로 권하게 된다.
+  store.set('ptlast', deckHTML.length <= 2e6 ? JSON.stringify({ name: deckName, html: deckHTML }) : '');
 }
 window.__ptLoad = loadDeck; // 프로그래매틱 로드용(테스트/확장)
 
@@ -741,9 +746,14 @@ let staged = { deck: null, notes: null };
 function renderSetup(){
   const ready = !!staged.deck;                            // 자료 없이는 시작할 수 없다
   $('#deckPicked').textContent = staged.deck ? staged.deck.name : 'HTML 파일';
-  $('#notesPicked').textContent = staged.notes ? staged.notes.name : '내보낸 대본 파일 (.md)';
+  // 고른 게 대본 파일이 아니면 여기서 말한다. 시작 화면에는 flash 자리가 없고,
+  // 발표를 시작한 뒤에 알려주면 이미 늦다(화면이 콘솔로 바뀐 뒤다).
+  $('#notesPicked').textContent = staged.notes ? staged.notes.name
+    : staged.notesErr ? `${staged.notesErr} — 대본 내보내기 파일이 아닙니다`
+    : '내보낸 대본 파일 (.md)';
   $('#slotDeck').classList.toggle('filled', ready);
   $('#slotNotes').classList.toggle('filled', !!staged.notes);
+  $('#slotNotes').classList.toggle('err', !staged.notes && !!staged.notesErr);
   $('#startBtn').disabled = !ready;
   $('#startBtn').title = ready ? '' : '발표 자료를 먼저 불러와 주세요';
   $('.patch').classList.toggle('armed', ready);
@@ -796,15 +806,28 @@ function handleFile(file){
   const isMd = /\.md$/i.test(file.name);
   // 발표 중이면 즉시 반영, 시작 전이면 골라 두기만 한다
   if (deckHTML) {
-    if (isMd && !deckHTML) { flash('발표 자료를 먼저 열어주세요.'); return; }
     stageFile(file, text => isMd ? importNotes(text) : loadDeck(text, file.name));
     return;
   }
   stageFile(file, text => {
-    if (isMd) staged.notes = { text, name: file.name };
+    if (isMd) {
+      // 발표를 시작하기 전에 검사한다 — 시작한 뒤에 알려주면 화면이 이미 콘솔로 바뀐 뒤다
+      if (parseNotes(text).ok) { staged.notes = { text, name: file.name }; staged.notesErr = ''; }
+      else { staged.notes = null; staged.notesErr = file.name; }
+    }
     else { staged.deck = { text, name: file.name }; renderDeckThumb(); }
     renderSetup();
   });
+}
+// 자료와 대본을 함께 끌어다 놓는 것이 정석 흐름인데 files[0] 만 처리하면 하나가 조용히 사라진다.
+// 파일 순서는 보장되지 않으므로 자료를 먼저 처리해야 대본이 새 자료에 붙는다.
+function handleFiles(list){
+  const files = [...(list || [])];
+  const deck = files.find(f => !/\.md$/i.test(f.name));
+  const notes = files.find(f => /\.md$/i.test(f.name));
+  if (deck) handleFile(deck);
+  // 발표 중에 둘을 같이 받으면 앵커가 준비된 뒤 붙인다(startPresenting 과 같은 계약)
+  if (notes) { if (deck && deckHTML) setTimeout(() => handleFile(notes), 600); else handleFile(notes); }
 }
 $('#pickBtn').onclick = function(){ this.blur(); $('#fileInput').click(); };
 $('#pickNotesBtn').onclick = function(){ this.blur(); $('#notesInput').click(); };
@@ -828,7 +851,7 @@ document.addEventListener('dragleave', e => {
 });
 document.addEventListener('drop', e => {
   e.preventDefault(); $('#dropzone').classList.remove('over'); $('#dropHint').hidden = true;
-  handleFile(e.dataTransfer.files[0]);
+  handleFiles(e.dataTransfer.files);
 });
 
 /* ---------- 프레임에 덱 쓰기 ---------- */
@@ -1682,7 +1705,7 @@ try {
     const b = $('#resumeBtn');
     b.hidden = false;
     b.textContent = '지난 발표 이어서 열기: ' + last.name;
-    b.onclick = () => { staged.deck = { text: last.html, name: last.name }; renderSetup(); };
+    b.onclick = () => { staged.deck = { text: last.html, name: last.name }; renderDeckThumb(); renderSetup(); };
   }
 } catch (_) {}
 
