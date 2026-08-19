@@ -11,7 +11,9 @@ cd "$(dirname "$0")"
 
 ROOT=../..
 CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-PORT=8199
+# 고정 포트를 쓰면 다른 서버가 이미 잡고 있을 때 바인딩에 조용히 실패하고,
+# 그 서버가 돌려주는 404 페이지가 설명서로 렌더링된다. 빈 포트를 골라 쓴다.
+PORT=$(python3 -c "import socket;s=socket.socket();s.bind(('127.0.0.1',0));print(s.getsockname()[1]);s.close()")
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"; [ -n "${SRV:-}" ] && kill "$SRV" 2>/dev/null || true' EXIT
 
@@ -76,13 +78,19 @@ document.querySelector('#d').onload = () => {
 </script>
 HTML
 
-(cd "$TMP" && python3 -m http.server $PORT >/dev/null 2>&1) & SRV=$!
-sleep 1
+(cd "$TMP" && python3 -m http.server "$PORT" --bind 127.0.0.1 >/dev/null 2>&1) & SRV=$!
+# 서버가 우리 파일을 실제로 내주는지 확인하고 진행한다
+for _ in $(seq 40); do
+  curl -sf -o /dev/null "http://127.0.0.1:$PORT/manual.html" && break
+  sleep 0.25
+done
+curl -sf -o /dev/null "http://127.0.0.1:$PORT/manual.html" || {
+  echo "로컬 서버를 띄우지 못했습니다 (포트 $PORT)"; exit 1; }
 
 for s in start console audience; do
   "$CHROME" --headless --disable-gpu --hide-scrollbars --force-device-scale-factor=2 \
     --window-size=1440,810 --virtual-time-budget=9000 \
-    --screenshot="$TMP/shots/$s.png" "http://localhost:$PORT/shot-$s.html" >/dev/null 2>&1
+    --screenshot="$TMP/shots/$s.png" "http://127.0.0.1:$PORT/shot-$s.html" >/dev/null 2>&1
 done
 
 python3 - "$TMP" <<'PY'
@@ -108,11 +116,11 @@ segno.make('https://ipf-jiwookim.github.io/html-presenter/', error='m').save(
 
 cp "$TMP"/shots/* shots/
 "$CHROME" --headless --disable-gpu --no-pdf-header-footer --virtual-time-budget=6000 \
-  --print-to-pdf="$PWD/발표자콘솔_사용설명서.pdf" "http://localhost:$PORT/manual.html" >/dev/null 2>&1
+  --print-to-pdf="$PWD/HTML_Presenter_사용설명서.pdf" "http://127.0.0.1:$PORT/manual.html" >/dev/null 2>&1
 
 python3 -c "
-d = open('발표자콘솔_사용설명서.pdf','rb').read()
+d = open('HTML_Presenter_사용설명서.pdf','rb').read()
 n = d.count(b'/Type /Page') - d.count(b'/Type /Pages')
-print(f'완료: 발표자콘솔_사용설명서.pdf · {n}쪽 · {len(d)/1024/1024:.2f}MB')
+print(f'완료: HTML_Presenter_사용설명서.pdf · {n}쪽 · {len(d)/1024/1024:.2f}MB')
 assert n == 6, f'쪽 수가 {n} 입니다. 레이아웃이 넘쳤는지 확인하세요.'
 "
