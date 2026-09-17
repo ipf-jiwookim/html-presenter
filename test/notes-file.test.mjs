@@ -77,3 +77,41 @@ test('parseNotes: 같은 앵커가 두 번 나오면 이어 붙인다', () => {
     + '<!-- slide: aa -->\n두 번째\n';
   assert.equal(PURE.parseNotes(md).anchors.aa, '첫 번째\n\n두 번째');
 });
+
+test('parseNotes: 제목 줄에서 장 번호와 총 장수를 읽는다', () => {
+  const md = PURE.serializeNotes({ deckName: 'a.html', total: 3, today: '2026-09-17',
+    notes: [{ anchor: 'aa11bb', index: 0, title: '표지', text: '오프닝' },
+            { anchor: 'cc22dd', index: 2, title: '끝', text: '마무리' }], orphans: [] });
+  const r = PURE.parseNotes(md);
+  assert.deepEqual(r.positions, { aa11bb: 0, cc22dd: 2 });
+  assert.equal(r.total, 3);
+});
+
+test('parseNotes: 미배정 메모는 위치를 갖지 않는다', () => {
+  const md = PURE.serializeNotes({ deckName: 'a.html', total: 2, today: '2026-09-17',
+    notes: [{ anchor: 'aa', index: 0, title: 't', text: '본문' }],
+    orphans: [{ text: '떠도는 것', hint: '옛 장' }] });
+  const r = PURE.parseNotes(md);
+  assert.deepEqual(Object.keys(r.positions), ['aa']);
+});
+
+test('noteFileName: 시각을 주면 파일명에 붙는다', () => {
+  assert.equal(PURE.noteFileName('쇼케이스.html', '2026-09-17', '1530'), '2026-09-17_1530_쇼케이스_대본.md');
+  assert.equal(PURE.noteFileName('쇼케이스.html', '2026-09-17'), '2026-09-17_쇼케이스_대본.md');
+});
+
+test('positionalPlan: 지문이 전부 어긋나고 장 수가 같으면 장 번호로 계획을 낸다', () => {
+  const parsed = { anchors: { old1: 'A', old2: 'B' }, positions: { old1: 0, old2: 2 }, total: 3, orphans: [] };
+  const plan = PURE.positionalPlan(parsed, ['new1', 'new2', 'new3']);
+  assert.deepEqual(plan, [
+    { anchor: 'old1', at: 0, target: 'new1', text: 'A' },
+    { anchor: 'old2', at: 2, target: 'new3', text: 'B' }
+  ]);
+});
+
+test('positionalPlan: 하나라도 지문이 맞거나 장 수가 다르면 계획을 내지 않는다', () => {
+  const base = { anchors: { a: 'A' }, positions: { a: 0 }, total: 2, orphans: [] };
+  assert.equal(PURE.positionalPlan(base, ['a', 'b']), null);          // 지문이 맞는다 → 기존 경로
+  assert.equal(PURE.positionalPlan(base, ['x', 'y', 'z']), null);     // 장 수가 다르다
+  assert.equal(PURE.positionalPlan({ ...base, positions: {} }, ['x', 'y']), null);  // 장 번호가 없다
+});

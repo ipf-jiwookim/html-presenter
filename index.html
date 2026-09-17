@@ -576,8 +576,9 @@ function slideAnchors(texts){
   if (per.length >= 5) {
     const count = new Map();
     per.forEach(tokens => new Set(tokens).forEach(t => count.set(t, (count.get(t) || 0) + 1)));
-    const limit = per.length * 0.8;
-    count.forEach((c, t) => { if (c >= limit) stop.add(t); });
+    // 전 슬라이드에 빠짐없이 나오는 토큰만 버린다. 비율(0.8 등)로 잡으면 장을 하나
+    // 넣거나 빼는 순간 stop 집합이 달라져 남은 장의 지문까지 통째로 무효화된다.
+    count.forEach((c, t) => { if (c === per.length) stop.add(t); });
   }
   const seen = new Map();
   return per.map(tokens => {
@@ -615,8 +616,9 @@ function sanitizeName(s){
   const out = String(s == null ? '' : s).replace(/\.html?$/i, '').replace(/[\/\\:*?"<>|]+/g, '_').trim();
   return out || 'deck';
 }
-function noteFileName(deckName, today){
-  return `${today}_${sanitizeName(deckName)}_대본.md`;
+function noteFileName(deckName, today, hhmm){
+  const stamp = hhmm ? `${today}_${hhmm}` : today;
+  return `${stamp}_${sanitizeName(deckName)}_대본.md`;
 }
 
 // 사람이 읽을 수 있는 대본 겸 가져오기용 파일. 연결의 근거는 slide 주석뿐이고
@@ -648,7 +650,7 @@ function serializeNotes(o){
 // 섹션 경계는 주석 마커만 신뢰한다 — 사용자가 노트 본문에 ## 를 쓸 수 있기 때문.
 function parseNotes(md){
   const text = String(md == null ? '' : md);
-  const out = { ok: false, anchors: {}, orphans: [] };
+  const out = { ok: false, anchors: {}, orphans: [], positions: {}, total: 0 };
   if (!/html-presenter notes v1/.test(text)) return out;
   out.ok = true;
   // 마커는 반드시 한 줄을 통째로 차지해야 인식한다(앞뒤로 공백만 허용) — 그래야 노트 본문
@@ -657,6 +659,12 @@ function parseNotes(md){
   const marks = [];
   let m;
   while ((m = re.exec(text))) marks.push({ at: m.index, len: m[0].length, anchor: m[1] || null, hint: (m[2] || '').trim() });
+  // 제목 줄의 장 번호는 참고값이지만, 덱을 고쳐 지문이 전부 바뀌었을 때 남는 유일한 단서다.
+  const heads = [];
+  const hre = /^## (\d+) \/ (\d+) · /gm;
+  let h;
+  while ((h = hre.exec(text))) heads.push({ at: h.index, index: Number(h[1]) - 1, total: Number(h[2]) });
+  if (heads.length) out.total = heads[heads.length - 1].total;
   marks.forEach((mk, k) => {
     const to = k + 1 < marks.length ? marks[k + 1].at : text.length;
     let body = text.slice(mk.at + mk.len, to);
@@ -664,7 +672,12 @@ function parseNotes(md){
     body = body.replace(/\n## (?:\d+ \/ \d+ · .*|미배정)[ \t]*\n?\s*$/, '');
     body = body.replace(/^[ \t]*\n/, '').replace(/\s+$/, '');
     if (!body) return;
-    if (mk.anchor) out.anchors[mk.anchor] = out.anchors[mk.anchor] ? out.anchors[mk.anchor] + '\n\n' + body : body;
+    if (mk.anchor) {
+      out.anchors[mk.anchor] = out.anchors[mk.anchor] ? out.anchors[mk.anchor] + '\n\n' + body : body;
+      let head = null;
+      heads.forEach(hd => { if (hd.at < mk.at) head = hd; });
+      if (head && out.positions[mk.anchor] == null) out.positions[mk.anchor] = head.index;
+    }
     else out.orphans.push({ text: body, hint: mk.hint });
   });
   return out;
@@ -714,7 +727,22 @@ function resettle(anchors, before, after){
   return { anchors: out, changed };
 }
 
-const PURE = { fnv1a, normTokens, slideAnchors, anchorOverlap, migrateIndexed, resettle, sanitizeName, noteFileName, serializeNotes, parseNotes, fmtClock, markWords, isCurrentMark };
+// 덱을 고치면 지문이 통째로 바뀌어 가져오기가 아무것도 못 붙인다. 그때 파일에 남은
+// 단서는 제목 줄의 장 번호뿐 — 지문이 하나도 안 맞고 장 수가 같을 때만 그 번호를 쓴다.
+function positionalPlan(parsed, mine){
+  if (!parsed || !mine || !mine.length) return null;
+  const keys = Object.keys(parsed.anchors || {});
+  const real = keys.filter(a => !a.startsWith('empty'));
+  const mineReal = mine.filter(a => !a.startsWith('empty'));
+  if (!real.length || !mineReal.length) return null;
+  if (anchorOverlap(real, mineReal) !== 0) return null;
+  if (parsed.total !== mine.length) return null;
+  const pos = parsed.positions || {};
+  if (!keys.every(a => pos[a] != null && mine[pos[a]])) return null;
+  return keys.map(a => ({ anchor: a, at: pos[a], target: mine[pos[a]], text: parsed.anchors[a] }));
+}
+
+const PURE = { fnv1a, normTokens, slideAnchors, anchorOverlap, migrateIndexed, resettle, positionalPlan, sanitizeName, noteFileName, serializeNotes, parseNotes, fmtClock, markWords, isCurrentMark };
 /* ==== PURE CORE END ==== */
 if (typeof window !== 'undefined') window.__pt = PURE;   // 브라우저 검증용 훅
 
@@ -1594,7 +1622,9 @@ function exportNotes(){
   });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([md], { type: 'text/markdown;charset=utf-8' }));
-  a.download = noteFileName(deckName, new Date().toISOString().slice(0, 10));
+  const now = new Date();
+  a.download = noteFileName(deckName, now.toISOString().slice(0, 10),
+    String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0'));
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   flash(`대본 ${notes.length + orphansOut.length}개를 내보냈습니다.`);
@@ -1654,8 +1684,27 @@ function importNotes(text){
   // "이 자료의 것"이라고 오판될 수 있다.
   const fileReal = fileKeys.filter(a => !a.startsWith('empty'));
   const mineReal = mine ? mine.filter(a => !a.startsWith('empty')) : null;
-  if (mineReal && fileReal.length && anchorOverlap(fileReal, mineReal) < 0.2 &&
+  // 자료를 고쳐 지문이 전부 바뀐 경우(plan 이 나온다)는 "다른 자료"가 아니다 — 묻지 않는다.
+  const plan = positionalPlan(parsed, mine);
+  if (!plan && mineReal && fileReal.length && anchorOverlap(fileReal, mineReal) < 0.2 &&
       !confirm('다른 자료에서 내보낸 대본으로 보입니다. 계속할까요?')) return;
+
+  if (plan && confirm(`지문이 하나도 맞지 않습니다. 자료를 고치셨다면 정상입니다.\n\n장 수가 ${mine.length}장으로 같으니 대본 ${plan.length}개를 파일에 적힌 장 번호대로 붙일까요?\n\n취소 = 미배정함으로 넣기`)) {
+    store.set(recKey() + ':undo', JSON.stringify(rec));
+    const pushed = (rec.orphans || []).slice();
+    plan.forEach(pl => {
+      if (rec.anchors[pl.target] && rec.anchors[pl.target] !== pl.text)
+        pushed.push({ text: rec.anchors[pl.target], hint: `${pl.at + 1}번째 장 · 교체되기 전 대본` });
+      rec.anchors[pl.target] = pl.text;
+    });
+    parsed.orphans.forEach(o => pushed.push(o));
+    rec.orphans = pushed;
+    rec.order = mine;
+    saveRecNow(); loadNotes(); refreshExportBtn();
+    flash(`장 번호대로 대본 ${plan.length}개를 붙였습니다.`);
+    showUndo();
+    return;
+  }
 
   const clash = fileKeys.filter(a => rec.anchors[a] && rec.anchors[a] !== parsed.anchors[a]);
   let replace = true;
@@ -1708,6 +1757,19 @@ function reqWakeLock(){
   try { navigator.wakeLock && navigator.wakeLock.request('screen').catch(() => {}); } catch (_) {}
 }
 document.addEventListener('visibilitychange', () => { if (!document.hidden && deckHTML) reqWakeLock(); });
+
+/* ---------- 탭 간 동기화 ----------
+   저장은 레코드를 통째로 덮어쓴다. 같은 덱을 두 탭에서 열어 두면 나중에 저장한 탭이
+   상대가 쓴 대본까지 되돌려 놓는다. 다른 탭의 쓰기를 받아 우리 쪽 상태를 맞춘다. */
+window.addEventListener('storage', e => {
+  if (!deckName || e.key !== recKey() || !e.newValue) return;
+  let incoming;
+  try { incoming = Object.assign(blankRec(), JSON.parse(e.newValue)); } catch (_) { return; }
+  const typing = document.activeElement === $('#note') ? $('#note').value : null;
+  rec = incoming;
+  if (typing != null) noteSet(step, typing);   // 이 탭에서 입력 중이던 것은 지키고 되쓴다
+  loadNotes(); renderOrphans(); refreshExportBtn(); applyFontSize();
+});
 
 /* ---------- 지난 발표 이어서 열기 ---------- */
 try {

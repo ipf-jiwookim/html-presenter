@@ -98,3 +98,20 @@ test('resettle: 새 지문에 이미 노트가 있으면 덮지 않는다', () =
   assert.deepEqual(r.anchors, { old1: 'A', new1: '기존' });
   assert.equal(r.changed, false);
 });
+
+test('slideAnchors: 장을 빼거나 더해도 남은 장의 지문은 그대로다', () => {
+  const foot = '공통 푸터 라인';
+  const texts = ['알파 내용', '베타 내용', '감마 내용', '델타 내용', '엡실론 내용', '제타 내용']
+    .map(t => `${t} ${foot}`);
+  const base = PURE.slideAnchors(texts);
+  const removed = PURE.slideAnchors(texts.filter((_, i) => i !== 2));
+  assert.deepEqual(removed, base.filter((_, i) => i !== 2));
+  const added = PURE.slideAnchors(texts.concat([`에타 내용 ${foot}`]));
+  assert.deepEqual(added.slice(0, texts.length), base);
+});
+
+test('slideAnchors: 모든 장에 있는 공통 푸터는 여전히 지문에서 빠진다', () => {
+  const a = PURE.slideAnchors(['알파 푸터', '베타 푸터', '감마 푸터', '델타 푸터', '엡실론 푸터']);
+  const b = PURE.slideAnchors(['알파', '베타', '감마', '델타', '엡실론']);
+  assert.deepEqual(a, b);
+});
