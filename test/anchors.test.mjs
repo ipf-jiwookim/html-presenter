@@ -93,10 +93,10 @@ test('resettle: 장 수가 다르거나 지문이 같으면 건드리지 않는�
   assert.equal(PURE.resettle({ a: 'A' }, null, ['a']).changed, false);
 });
 
-test('resettle: 새 지문에 이미 노트가 있으면 덮지 않는다', () => {
+test('resettle: 새 지문에 이미 노트가 있으면 덮지 않고 옛 것을 밀어낸다', () => {
   const r = PURE.resettle({ old1: 'A', new1: '기존' }, ['old1'], ['new1']);
-  assert.deepEqual(r.anchors, { old1: 'A', new1: '기존' });
-  assert.equal(r.changed, false);
+  assert.deepEqual(r.anchors, { new1: '기존' });
+  assert.deepEqual(r.displaced, [{ text: 'A', at: 0 }]);
 });
 
 test('slideAnchors: 장을 빼거나 더해도 남은 장의 지문은 그대로다', () => {
@@ -114,4 +114,17 @@ test('slideAnchors: 모든 장에 있는 공통 푸터는 여전히 지문에서
   const a = PURE.slideAnchors(['알파 푸터', '베타 푸터', '감마 푸터', '델타 푸터', '엡실론 푸터']);
   const b = PURE.slideAnchors(['알파', '베타', '감마', '델타', '엡실론']);
   assert.deepEqual(a, b);
+});
+
+test('resettle: 새 지문 자리가 차 있으면 옛 대본을 밀어내고 옛 지문은 지운다', () => {
+  const r = PURE.resettle({ old1: '옛것', new1: '이미 있던 것' }, ['old1'], ['new1']);
+  assert.deepEqual(r.anchors, { new1: '이미 있던 것' });
+  assert.deepEqual(r.displaced, [{ text: '옛것', at: 0 }]);
+  assert.equal(r.changed, true);
+});
+
+test('resettle: 자리가 차 있어도 내용이 같으면 밀어낼 것이 없다', () => {
+  const r = PURE.resettle({ old1: '같은 것', new1: '같은 것' }, ['old1'], ['new1']);
+  assert.deepEqual(r.anchors, { new1: '같은 것' });
+  assert.deepEqual(r.displaced, []);
 });
