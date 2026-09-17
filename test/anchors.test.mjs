@@ -80,3 +80,21 @@ test('migrateIndexed: 구 인덱스 노트를 앵커 키로 이관, 앵커 없�
   assert.deepEqual(noAnchor.anchors, {});
   assert.deepEqual(noAnchor.byIndex, { '1': '노트' });
 });
+
+test('resettle: 장 수가 같으면 위치로 옮기고 옛 지문은 지운다', () => {
+  const r = PURE.resettle({ old1: 'A', old2: 'B' }, ['old1', 'old2'], ['new1', 'new2']);
+  assert.deepEqual(r.anchors, { new1: 'A', new2: 'B' });
+  assert.equal(r.changed, true);
+});
+
+test('resettle: 장 수가 다르거나 지문이 같으면 건드리지 않는다', () => {
+  assert.equal(PURE.resettle({ a: 'A' }, ['a'], ['a', 'b']).changed, false);
+  assert.equal(PURE.resettle({ a: 'A' }, ['a'], ['a']).changed, false);
+  assert.equal(PURE.resettle({ a: 'A' }, null, ['a']).changed, false);
+});
+
+test('resettle: 새 지문에 이미 노트가 있으면 덮지 않는다', () => {
+  const r = PURE.resettle({ old1: 'A', new1: '기존' }, ['old1'], ['new1']);
+  assert.deepEqual(r.anchors, { old1: 'A', new1: '기존' });
+  assert.equal(r.changed, false);
+});
