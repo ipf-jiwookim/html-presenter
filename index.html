@@ -116,10 +116,20 @@ button:focus-visible{outline:2px solid var(--next);outline-offset:2px}
 
 /* ── 본체: 두 개의 모니터 ── */
 main{
-  flex:1;min-height:0;display:grid;gap:1px;
-  grid-template-columns:minmax(0,1fr) minmax(340px,29vw);
+  flex:1;min-height:0;display:grid;
+  /* 사이드바 폭은 발표자가 손잡이로 정한다(--side). 너무 좁거나 넓어 한쪽이 못 쓰게 되지 않게 가둔다 */
+  grid-template-columns:minmax(0,1fr) 7px clamp(300px,var(--side,29vw),70vw);
   background:var(--rule);
 }
+/* 끌어서 크기를 바꾸는 손잡이. 평소엔 경계선처럼 보이고 올리면 앰버로 켜진다 */
+.split{background:var(--void);touch-action:none;position:relative}
+.split::after{content:'';position:absolute;background:var(--rule);border-radius:2px;transition:background .15s}
+.split.x{cursor:col-resize}
+.split.x::after{left:3px;right:3px;top:0;bottom:0}
+.split.y{flex:none;height:7px;cursor:row-resize}
+.split.y::after{top:3px;bottom:3px;left:0;right:0}
+.split:hover::after,.split.drag::after,.split:focus-visible::after{background:var(--next)}
+.split:focus-visible{outline:none}
 .bay{display:flex;flex-direction:column;min-height:0;min-width:0;background:var(--console)}
 .tally{
   display:flex;align-items:center;gap:10px;padding:9px 14px;
@@ -134,7 +144,8 @@ main{
   background:#000;box-shadow:inset 0 0 0 1px #000, inset 0 0 60px rgba(0,0,0,.9);
 }
 .stage iframe{position:absolute;width:1280px;height:720px;border:0;transform-origin:0 0;pointer-events:none;background:#fff}
-.bay.side .stage{flex:0 0 auto;aspect-ratio:16/9}
+/* 높이를 손잡이로 정하면 인라인 height 가 들어온다. 대본 칸을 밀어낼 만큼 크면 줄어든다 */
+.bay.side .stage{flex:0 1 auto;min-height:60px;aspect-ratio:16/9}
 .bay.side{display:flex;flex-direction:column}
 
 /* ── 큐 시트(메모) ── */
@@ -490,6 +501,9 @@ input[type=file]{display:none}
     <div class="stage"><iframe id="mirror" title="현재 슬라이드"></iframe></div>
   </section>
 
+  <div class="split x" id="splitX" role="separator" aria-orientation="vertical" tabindex="0"
+    aria-label="사이드바 폭 조절" title="끌어서 사이드바 폭 조절 · 두 번 누르면 원래대로"></div>
+
   <div class="bay side" aria-label="다음 화면과 대본">
     <div class="tally next">
       <span class="name" id="prevLabel">다음 화면</span>
@@ -497,6 +511,8 @@ input[type=file]{display:none}
       <button id="resync" title="내 화면만 처음부터 다시 그립니다. 청중 화면은 건드리지 않습니다">내 화면 다시 그리기</button>
     </div>
     <div class="stage" id="previewStage"><iframe id="preview" title="다음 슬라이드"></iframe><p class="stage-end">다음 화면이 없습니다</p></div>
+    <div class="split y" id="splitY" role="separator" aria-orientation="horizontal" tabindex="0"
+      aria-label="다음 화면과 대본 경계 조절" title="끌어서 다음 화면·대본 비율 조절 · 두 번 누르면 원래대로"></div>
 
     <section class="cue">
       <div class="cue-head">
@@ -1577,9 +1593,11 @@ function loadNotes(){
   renderNoteMap();
 }
 /* ── 큐 시트 글씨 크기 ── */
-const FONT_STEPS = [13, 16, 20, 24, 28];
+const FONT_STEPS = [12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32];
 function applyFontSize(){
-  const px = FONT_STEPS.includes(rec.fontSize) ? rec.fontSize : 16;
+  // 예전 단계(13 등)로 저장된 값은 가장 가까운 단계로 옮긴다 — 16 으로 튀면 발표 직전에 글씨가 바뀐다
+  const want = Number(rec.fontSize) || 16;
+  const px = FONT_STEPS.reduce((a, b) => Math.abs(b - want) < Math.abs(a - want) ? b : a);
   rec.fontSize = px;
   $('#note').style.fontSize = px + 'px';
   const at = FONT_STEPS.indexOf(px);
@@ -1803,6 +1821,41 @@ function fitStages(){
   });
 }
 window.addEventListener('resize', fitStages);
+
+/* ---------- 사이드바 크기 조절 ----------
+   대본이 제일 중요한 사람도, 다음 화면이 중요한 사람도 있다. 자료와 상관없는 취향이라 덱 레코드가 아닌 별도 키에 둔다. */
+const LAYOUT_KEY = 'ptlayout';
+let layout = {};
+try { layout = JSON.parse(store.get(LAYOUT_KEY)) || {}; } catch (_) {}
+function applyLayout(){
+  if (layout.side) $('#app').style.setProperty('--side', layout.side + 'px');
+  else $('#app').style.removeProperty('--side');
+  $('#previewStage').style.height = layout.prev ? layout.prev + 'px' : '';
+  $('#previewStage').style.aspectRatio = layout.prev ? 'auto' : '';
+  fitStages();
+}
+function makeSplit(el, key, measure){
+  const set = v => { layout[key] = Math.max(60, Math.round(v)); applyLayout(); };
+  const save = () => store.set(LAYOUT_KEY, JSON.stringify(layout));
+  el.onpointerdown = e => {
+    e.preventDefault(); el.setPointerCapture(e.pointerId); el.classList.add('drag');
+    const start = measure(e), base = key === 'side' ? $('.bay.side').offsetWidth : $('#previewStage').offsetHeight;
+    el.onpointermove = m => set(base + (measure(m) - start) * (key === 'side' ? -1 : 1));
+    el.onpointerup = el.onpointercancel = () => { el.onpointermove = null; el.classList.remove('drag'); save(); };
+  };
+  el.ondblclick = () => { delete layout[key]; applyLayout(); save(); };
+  // 방향키는 전역 단축키(장 넘김)로 새지 않게 여기서 멈춘다
+  el.onkeydown = e => {
+    const d = { ArrowLeft: 20, ArrowUp: -20, ArrowRight: -20, ArrowDown: 20 }[e.key];
+    if (d === undefined) return;
+    e.preventDefault(); e.stopPropagation();
+    const cur = key === 'side' ? $('.bay.side').offsetWidth : $('#previewStage').offsetHeight;
+    set(cur + d); save();
+  };
+}
+makeSplit($('#splitX'), 'side', e => e.clientX);
+makeSplit($('#splitY'), 'prev', e => e.clientY);
+applyLayout();
 </script>
 </body>
 </html>
