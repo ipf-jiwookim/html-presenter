@@ -159,7 +159,7 @@ main{
 #savedTag{margin-left:auto;flex:none}
 .cue-head h2,.cue-head #noteFor{flex:none}
 #note{
-  flex:1;min-height:110px;resize:none;margin:0 14px;padding:12px;
+  flex:1;min-height:110px;resize:none;margin:0 14px 14px;padding:12px;
   background:#12151a;color:var(--ink);border:1px solid var(--rule);border-radius:8px;
   font:16px/1.7 var(--ui);
 }
@@ -176,13 +176,10 @@ main{
 
 #note::placeholder{color:#5d6572}
 #note:focus-visible{outline:2px solid var(--next);outline-offset:1px;border-color:transparent}
-#nextnote{margin:8px 14px 14px;font-size:13px;line-height:1.6;color:var(--ink-dim);max-height:5.5em;overflow:auto;white-space:pre-wrap}
-#nextnote:not(:empty)::before{
-  content:'다음 장 대본';display:block;
-  font-size:12px;font-weight:600;color:var(--next);margin-bottom:4px;
-}
-#orphanBox{margin:0 14px 14px;border:1px solid var(--rule);border-radius:8px;background:#12151a}
-#orphanSum{padding:9px 12px;cursor:pointer;font-size:13px;font-weight:600;color:var(--next)}
+/* 대본 칸 아래 여백. 미배정함이 열려도 이 칸 안에서만 스크롤한다 —
+   높이 제한이 없어서 열면 대본 칸을 밀어내고 화면 밖으로 빠져나갔다 */
+#orphanBox{flex:0 1 auto;min-height:40px;max-height:30vh;overflow:auto;margin:0 14px 14px;border:1px solid var(--rule);border-radius:8px;background:#12151a}
+#orphanSum{position:sticky;top:0;background:#12151a;padding:9px 12px;cursor:pointer;font-size:13px;font-weight:600;color:var(--next)}
 .orphan{padding:10px 12px;border-top:1px solid var(--rule);display:flex;flex-direction:column;gap:7px}
 .orphan .hint{font-size:11.5px;color:#6c7482}
 .orphan .body{font-size:13px;line-height:1.6;white-space:pre-wrap;max-height:4.5em;overflow:auto}
@@ -520,7 +517,6 @@ input[type=file]{display:none}
       </div>
       <textarea id="note" aria-label="이 장 대본" spellcheck="false"
         placeholder="이 장에서 할 말을 적어두세요…"></textarea>
-      <div id="nextnote"></div>
       <details id="orphanBox" hidden>
         <summary id="orphanSum"></summary>
         <div id="orphanList"></div>
@@ -1574,7 +1570,6 @@ function loadNotes(){
   // 값이 같은데도 대입하면 한글 조합이 끊기고 커서가 맨 뒤로 튄다 — 달라졌을 때만 쓴다
   const text = noteGet(step);
   if ($('#note').value !== text) $('#note').value = text;
-  $('#nextnote').textContent = noteGet(step + 1);
   $('#savedTag').classList.remove('show');
   applyFontSize();
   renderOrphans();
@@ -1587,7 +1582,6 @@ function applyFontSize(){
   const px = FONT_STEPS.includes(rec.fontSize) ? rec.fontSize : 16;
   rec.fontSize = px;
   $('#note').style.fontSize = px + 'px';
-  $('#nextnote').style.fontSize = Math.max(12, px - 3) + 'px';
   const at = FONT_STEPS.indexOf(px);
   $('#fontDown').disabled = at === 0;                      // 끝에서 눌러도 무반응인 상태를 만들지 않는다
   $('#fontUp').disabled = at === FONT_STEPS.length - 1;
